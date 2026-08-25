@@ -1,0 +1,71 @@
+const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
+
+function authHeaders() {
+  const lovableKey = process.env["LOVABLE_API_KEY"];
+  const telegramKey = process.env["TELEGRAM_API_KEY"];
+  if (!lovableKey) throw new Error("LOVABLE_API_KEY is not configured");
+  if (!telegramKey) throw new Error("TELEGRAM_API_KEY is not configured");
+  return {
+    Authorization: `Bearer ${lovableKey}`,
+    "X-Connection-Api-Key": telegramKey,
+    "Content-Type": "application/json",
+  };
+}
+
+export async function tg<T = unknown>(
+  method: string,
+  body: Record<string, unknown> = {},
+): Promise<T | null> {
+  const response = await fetch(`${GATEWAY_URL}/${method}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  const text = await response.text();
+  if (!response.ok) {
+    console.error(`Telegram ${method} failed [${response.status}]: ${text}`);
+    return null;
+  }
+  let parsed: { ok?: boolean; result?: T; description?: string };
+  try {
+    parsed = JSON.parse(text) as typeof parsed;
+  } catch {
+    console.error(`Telegram ${method} returned non-JSON: ${text}`);
+    return null;
+  }
+  if (!parsed.ok) {
+    console.error(`Telegram ${method} error: ${parsed.description ?? text}`);
+    return null;
+  }
+  return (parsed.result ?? null) as T | null;
+}
+
+export type InlineKeyboard = { text: string; callback_data: string }[][];
+
+export function sendMessage(
+  chatId: number | string,
+  text: string,
+  keyboard?: InlineKeyboard,
+) {
+  return tg("sendMessage", {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    ...(keyboard ? { reply_markup: { inline_keyboard: keyboard } } : {}),
+  });
+}
+
+/** Copies a message so the receiver never sees who sent it. */
+export function copyMessage(toChatId: number | string, fromChatId: number, messageId: number) {
+  return tg("copyMessage", {
+    chat_id: toChatId,
+    from_chat_id: fromChatId,
+    message_id: messageId,
+  });
+}
+
+export function answerCallbackQuery(id: string, text?: string) {
+  return tg("answerCallbackQuery", { callback_query_id: id, ...(text ? { text } : {}) });
+}
