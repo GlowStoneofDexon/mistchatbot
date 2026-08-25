@@ -151,7 +151,19 @@ async function endDialog(user: BotUser, opts: { notifyPartner: boolean; reason?:
   if (partnerId) await setIdle(partnerId);
 
   if (dialogId) {
-    await supabase.rpc("increment_chats", {}).catch?.(() => undefined);
+    await supabase
+      .from("bot_users")
+      .update({ chats_completed: user.chats_completed + 1 })
+      .eq("telegram_id", user.telegram_id);
+    if (partnerId) {
+      const partner = await getUser(partnerId);
+      if (partner) {
+        await supabase
+          .from("bot_users")
+          .update({ chats_completed: partner.chats_completed + 1 })
+          .eq("telegram_id", partnerId);
+      }
+    }
   }
 
   if (partnerId && dialogId) {
