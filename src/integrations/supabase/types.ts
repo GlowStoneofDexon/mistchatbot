@@ -14,13 +14,162 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bot_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      bot_users: {
+        Row: {
+          banned: boolean
+          blocked_until: string | null
+          chats_completed: number
+          created_at: string
+          dialog_id: string | null
+          dialog_started_at: string | null
+          dislikes: number
+          first_name: string | null
+          language_code: string | null
+          last_rated_dialog: string | null
+          last_seen: string
+          likes: number
+          partner_id: number | null
+          report_count: number
+          state: string
+          telegram_id: number
+          total_ratings: number
+          username: string | null
+        }
+        Insert: {
+          banned?: boolean
+          blocked_until?: string | null
+          chats_completed?: number
+          created_at?: string
+          dialog_id?: string | null
+          dialog_started_at?: string | null
+          dislikes?: number
+          first_name?: string | null
+          language_code?: string | null
+          last_rated_dialog?: string | null
+          last_seen?: string
+          likes?: number
+          partner_id?: number | null
+          report_count?: number
+          state?: string
+          telegram_id: number
+          total_ratings?: number
+          username?: string | null
+        }
+        Update: {
+          banned?: boolean
+          blocked_until?: string | null
+          chats_completed?: number
+          created_at?: string
+          dialog_id?: string | null
+          dialog_started_at?: string | null
+          dislikes?: number
+          first_name?: string | null
+          language_code?: string | null
+          last_rated_dialog?: string | null
+          last_seen?: string
+          likes?: number
+          partner_id?: number | null
+          report_count?: number
+          state?: string
+          telegram_id?: number
+          total_ratings?: number
+          username?: string | null
+        }
+        Relationships: []
+      }
+      ratings: {
+        Row: {
+          created_at: string
+          dialog_id: string
+          id: string
+          rated_id: number
+          rater_id: number
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          dialog_id: string
+          id?: string
+          rated_id: number
+          rater_id: number
+          value: number
+        }
+        Update: {
+          created_at?: string
+          dialog_id?: string
+          id?: string
+          rated_id?: number
+          rater_id?: number
+          value?: number
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          dialog_id: string | null
+          id: string
+          reason: string
+          reported_id: number
+          reporter_id: number
+        }
+        Insert: {
+          created_at?: string
+          dialog_id?: string | null
+          id?: string
+          reason: string
+          reported_id: number
+          reporter_id: number
+        }
+        Update: {
+          created_at?: string
+          dialog_id?: string | null
+          id?: string
+          reason?: string
+          reported_id?: number
+          reporter_id?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      bot_public_stats: {
+        Args: never
+        Returns: {
+          active_dialogs: number
+          chats_completed: number
+          total_users: number
+          waiting: number
+        }[]
+      }
+      match_partner: {
+        Args: { p_user: number }
+        Returns: {
+          dialog: string
+          partner: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
