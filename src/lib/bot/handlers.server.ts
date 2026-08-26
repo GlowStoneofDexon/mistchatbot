@@ -1,5 +1,7 @@
 import { sendMessage, copyMessage, answerCallbackQuery, type InlineKeyboard } from "./telegram.server";
 import { WELCOME, HELP, RULES, TERMS, VIP, PAYSUPPORT, REPORT_REASONS, reasonLabel } from "./texts";
+import { chatBlocked, launchState, premiereMessage } from "./gate.server";
+import { consume, FLOOD_MESSAGE } from "./limits.server";
 
 type TgUser = {
   id: number;
@@ -197,9 +199,26 @@ async function startSearch(user: BotUser) {
     return;
   }
   if (user.state === "chatting" && user.partner_id) {
-    await sendMessage(user.telegram_id, "You are already chatting. Use /next to skip or /stop to end.");
+    await sendMessage(
+      user.telegram_id,
+      "💬 <b>You are in a chat right now.</b>\n\n🆕 /next — leave and find someone new\n🛑 /stop — end this chat",
+    );
     return;
   }
+  if (user.state === "searching") {
+    await sendMessage(
+      user.telegram_id,
+      "🔍 <b>Already searching…</b>\n\nHang tight — you will be connected as soon as someone else is looking. Use /stop to cancel.",
+    );
+    return;
+  }
+
+  const gate = await chatBlocked(user.telegram_id);
+  if (gate) {
+    await sendMessage(user.telegram_id, gate);
+    return;
+  }
+
 
   await supabase.from("bot_users").update({ state: "searching" }).eq("telegram_id", user.telegram_id);
 
@@ -420,12 +439,21 @@ async function handleMessage(message: TgMessage) {
     return;
   }
 
+  const rate = await consume(user.telegram_id, text.startsWith("/") ? "command" : "message");
+  if (!rate.allowed) {
+    if (rate.warn) await sendMessage(user.telegram_id, FLOOD_MESSAGE);
+    return;
+  }
+
   if (text.startsWith("/")) {
     const command = text.split(/[\s@]/)[0];
     switch (command) {
-      case "/start":
+      case "/start": {
         await sendMessage(user.telegram_id, WELCOME);
+        const gate = await chatBlocked(user.telegram_id);
+        if (gate) await sendMessage(user.telegram_id, gate);
         return;
+      }
       case "/help":
         await sendMessage(user.telegram_id, HELP);
         return;
@@ -495,7 +523,11 @@ async function handleMessage(message: TgMessage) {
   }
 
   if (user.state !== "chatting" || !user.partner_id) {
-    await sendMessage(user.telegram_id, "You are not chatting with anyone. Tap /search to find a partner 🔍");
+    const gate = await chatBlocked(user.telegram_id);
+    await sendMessage(
+      user.telegram_id,
+      gate ?? "You are not chatting with anyone. Tap /search to find a partner 🔍",
+    );
     return;
   }
 

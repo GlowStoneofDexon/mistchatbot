@@ -9,6 +9,8 @@ Chat anonymously with a random stranger. Nobody sees your name, username or phot
 🛑 /stop — end the chat
 🆘 /help — all commands
 
+📣 Updates & launch news: @MistChatChannel
+
 By using this bot you accept the /rules and /terms.`;
 
 export const HELP = `<b>🆘 How to use ${BOT_NAME}</b>
@@ -63,7 +65,9 @@ VIP is coming soon and will add:
 • Priority in the matching queue
 • A VIP badge shown to your partner
 
-Payments will be accepted via <b>bKash</b>, <b>Nagad</b> and <b>cryptocurrency</b>. Nothing is charged today.`;
+Payments will be accepted via <b>bKash</b>, <b>Nagad</b> and <b>cryptocurrency</b>. Nothing is charged today.
+
+📣 Follow @MistChatChannel to hear when VIP goes live.`;
 
 export const PAYSUPPORT = `<b>💰 Payment support</b>
 
