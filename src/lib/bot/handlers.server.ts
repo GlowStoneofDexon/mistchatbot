@@ -439,6 +439,12 @@ async function handleMessage(message: TgMessage) {
     return;
   }
 
+  const rate = await consume(user.telegram_id, text.startsWith("/") ? "command" : "message");
+  if (!rate.allowed) {
+    if (rate.warn) await sendMessage(user.telegram_id, FLOOD_MESSAGE);
+    return;
+  }
+
   if (text.startsWith("/")) {
     const command = text.split(/[\s@]/)[0];
     switch (command) {
