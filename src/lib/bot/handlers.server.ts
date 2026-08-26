@@ -520,7 +520,11 @@ async function handleMessage(message: TgMessage) {
   }
 
   if (user.state !== "chatting" || !user.partner_id) {
-    await sendMessage(user.telegram_id, "You are not chatting with anyone. Tap /search to find a partner 🔍");
+    const gate = await chatBlocked(user.telegram_id);
+    await sendMessage(
+      user.telegram_id,
+      gate ?? "You are not chatting with anyone. Tap /search to find a partner 🔍",
+    );
     return;
   }
 
