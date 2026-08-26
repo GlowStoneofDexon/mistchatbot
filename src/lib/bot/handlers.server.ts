@@ -199,9 +199,26 @@ async function startSearch(user: BotUser) {
     return;
   }
   if (user.state === "chatting" && user.partner_id) {
-    await sendMessage(user.telegram_id, "You are already chatting. Use /next to skip or /stop to end.");
+    await sendMessage(
+      user.telegram_id,
+      "💬 <b>You are in a chat right now.</b>\n\n🆕 /next — leave and find someone new\n🛑 /stop — end this chat",
+    );
     return;
   }
+  if (user.state === "searching") {
+    await sendMessage(
+      user.telegram_id,
+      "🔍 <b>Already searching…</b>\n\nHang tight — you will be connected as soon as someone else is looking. Use /stop to cancel.",
+    );
+    return;
+  }
+
+  const gate = await chatBlocked(user.telegram_id);
+  if (gate) {
+    await sendMessage(user.telegram_id, gate);
+    return;
+  }
+
 
   await supabase.from("bot_users").update({ state: "searching" }).eq("telegram_id", user.telegram_id);
 
