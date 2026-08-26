@@ -448,9 +448,12 @@ async function handleMessage(message: TgMessage) {
   if (text.startsWith("/")) {
     const command = text.split(/[\s@]/)[0];
     switch (command) {
-      case "/start":
+      case "/start": {
         await sendMessage(user.telegram_id, WELCOME);
+        const gate = await chatBlocked(user.telegram_id);
+        if (gate) await sendMessage(user.telegram_id, gate);
         return;
+      }
       case "/help":
         await sendMessage(user.telegram_id, HELP);
         return;
