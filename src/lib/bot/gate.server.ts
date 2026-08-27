@@ -56,7 +56,12 @@ function countdown(target: Date) {
 
 export function premiereMessage(state: LaunchState) {
   const when = state.launchAt
-    ? `🗓 Premiere: <b>${state.launchAt.toUTCString()}</b>\n⏳ Starts in <b>${countdown(state.launchAt)}</b>`
+    ? `🗓 Premiere: <b>${state.launchAt.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      })}</b>\n⏳ Starts in <b>${countdown(state.launchAt)}</b>`
     : "🗓 Premiere date: <b>announced soon</b>";
 
   return `<b>🌫 Mist Chat Bot is not open yet</b>
