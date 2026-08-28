@@ -11,6 +11,7 @@ import {
   setBanned,
   getSettings,
   saveSettings,
+  getThread,
   type AdminUser,
 } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,70 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
+function ThreadViewer({
+  dialogId,
+  reporterId,
+  reportedId,
+}: {
+  dialogId: string;
+  reporterId: number | null;
+  reportedId: number | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const fetchThread = useServerFn(getThread);
+  const threadQuery = useQuery({
+    queryKey: ["admin-thread", dialogId],
+    queryFn: () => fetchThread({ data: { dialogId } }),
+    enabled: open,
+  });
+
+  const messages = threadQuery.data ?? [];
+
+  return (
+    <div className="space-y-2">
+      <Button variant="secondary" size="sm" onClick={() => setOpen((v) => !v)}>
+        {open ? "Hide conversation" : "View conversation"}
+      </Button>
+      {open && (
+        <div className="max-h-80 space-y-2 overflow-y-auto rounded-lg border border-border p-3">
+          {threadQuery.isLoading && <p className="text-sm text-muted-foreground">Loading messages…</p>}
+          {!threadQuery.isLoading && messages.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No stored messages for this dialog (it may predate message logging).
+            </p>
+          )}
+          {messages.map((m) => {
+            const isReporter = reporterId != null && Number(m.sender_id) === Number(reporterId);
+            const label = isReporter
+              ? "Partner 1"
+              : reportedId != null && Number(m.sender_id) === Number(reportedId)
+                ? "Partner 2"
+                : "Unknown";
+            return (
+              <div
+                key={m.id}
+                className={`rounded-md border border-border p-2 text-sm ${isReporter ? "" : "bg-muted/40"}`}
+              >
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">{label}</span>
+                  <span className="font-mono">{m.sender_id}</span>
+                  <span>{new Date(m.created_at).toLocaleString()}</span>
+                  {m.kind !== "text" && <Badge variant="secondary">{m.kind}</Badge>}
+                </div>
+                <p className="mt-1 whitespace-pre-wrap text-foreground">
+                  {m.content ?? <span className="text-muted-foreground">[{m.kind}]</span>}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PartnerCard({ label, user }: { label: string; user: AdminUser | null }) {
+
   if (!user) {
     return (
       <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
@@ -219,6 +283,14 @@ function AdminPage() {
                   <PartnerCard label="Partner 1 (reporter)" user={report.reporter} />
                   <PartnerCard label="Partner 2 (reported)" user={report.reported} />
                 </div>
+                {report.dialog_id && (
+                  <ThreadViewer
+                    dialogId={report.dialog_id}
+                    reporterId={report.reporter?.telegram_id ?? null}
+                    reportedId={report.reported?.telegram_id ?? null}
+                  />
+                )}
+
                 {report.reported && (
                   <div className="flex gap-2">
                     {report.reported.banned ? (

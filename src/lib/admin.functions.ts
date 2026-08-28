@@ -174,3 +174,43 @@ export const saveSettings = createServerFn({ method: "POST" })
     );
     return { ok: true };
   });
+
+export type ThreadMessage = {
+  id: string;
+  sender_id: number;
+  kind: string;
+  content: string | null;
+  created_at: string;
+};
+
+/** Full Partner 1 / Partner 2 transcript of a reported dialog. */
+export const getThread = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { dialogId: string }) => ({ dialogId: String(input.dialogId) }))
+  .handler(async ({ data, context }): Promise<ThreadMessage[]> => {
+    await assertAdmin(context as any);
+    const db = await admin();
+    const { data: rows } = await db
+      .from("dialog_messages")
+      .select("id, sender_id, kind, content, created_at")
+      .eq("dialog_id", data.dialogId)
+      .order("created_at", { ascending: true })
+      .limit(500);
+    return (rows ?? []) as ThreadMessage[];
+  });
+
+/** Redeems the one-time code from the bot's /admin command and grants the admin role. */
+export const claimAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { code: string }) => ({ code: String(input.code ?? "").trim() }))
+  .handler(async ({ data, context }) => {
+    if (!data.code) return { granted: false };
+    const { consumeClaimCode } = await import("@/lib/bot/gate.server");
+    if (!(await consumeClaimCode(data.code))) return { granted: false };
+    const db = await admin();
+    await db
+      .from("user_roles")
+      .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
+    return { granted: true };
+  });
+

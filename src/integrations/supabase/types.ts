@@ -122,6 +122,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dialog_messages: {
+        Row: {
+          content: string | null
+          created_at: string
+          dialog_id: string
+          id: string
+          kind: string
+          partner_id: number | null
+          sender_id: number
+          side: number
+          telegram_message_id: number | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          dialog_id: string
+          id?: string
+          kind?: string
+          partner_id?: number | null
+          sender_id: number
+          side?: number
+          telegram_message_id?: number | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          dialog_id?: string
+          id?: string
+          kind?: string
+          partner_id?: number | null
+          sender_id?: number
+          side?: number
+          telegram_message_id?: number | null
+        }
+        Relationships: []
+      }
       ratings: {
         Row: {
           created_at: string

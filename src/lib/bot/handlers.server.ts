@@ -1,6 +1,16 @@
 import { sendMessage, copyMessage, answerCallbackQuery, type InlineKeyboard } from "./telegram.server";
 import { WELCOME, HELP, RULES, TERMS, VIP, PAYSUPPORT, REPORT_REASONS, reasonLabel } from "./texts";
-import { chatBlocked, launchState, premiereMessage } from "./gate.server";
+import {
+  chatBlocked,
+  launchState,
+  premiereMessage,
+  ADMIN_TELEGRAM_ID,
+  DASHBOARD_URL,
+  issueClaimCode,
+  listTesters,
+  addTester,
+  removeTester,
+} from "./gate.server";
 import { consume, FLOOD_MESSAGE } from "./limits.server";
 
 type TgUser = {
@@ -130,6 +140,29 @@ async function mirror(dialogId: string | null, label: string, message: TgMessage
   await sendMessage(chat, `🗂 <code>${short}</code> · <b>${label}</b>`);
   await copyMessage(chat, message.chat.id, message.message_id);
 }
+
+function messageKind(message: TgMessage) {
+  const m = message as unknown as Record<string, unknown>;
+  for (const kind of ["photo", "video", "animation", "sticker", "voice", "audio", "video_note", "document"]) {
+    if (m[kind]) return kind;
+  }
+  return "text";
+}
+
+/** Stores a lightweight record of a relayed message so admins can review reported dialogs. */
+async function logMessage(user: BotUser, message: TgMessage) {
+  if (!user.dialog_id) return;
+  const supabase = await db();
+  await supabase.from("dialog_messages").insert({
+    dialog_id: user.dialog_id,
+    sender_id: user.telegram_id,
+    partner_id: user.partner_id,
+    kind: messageKind(message),
+    content: message.text ?? message.caption ?? null,
+    telegram_message_id: message.message_id,
+  });
+}
+
 
 function ratingKeyboard(dialogId: string, partnerId: number): InlineKeyboard {
   const d = compact(dialogId);
@@ -516,9 +549,51 @@ async function handleMessage(message: TgMessage) {
         );
         return;
       }
+      case "/admin":
+      case "/auth": {
+        if (user.telegram_id !== ADMIN_TELEGRAM_ID) {
+          await sendMessage(user.telegram_id, "Unknown command. See /help for the full list.");
+          return;
+        }
+        const code = await issueClaimCode();
+        await sendMessage(
+          user.telegram_id,
+          `🛡 <b>Moderation dashboard</b>\n\n1. Open ${DASHBOARD_URL}/auth?claim=${code}\n2. Sign in (or create your account) with your email\n3. The admin role is granted automatically\n\nThis one-time code expires in 30 minutes. Never share it.`,
+        );
+        return;
+      }
+      case "/testers": {
+        if (user.telegram_id !== ADMIN_TELEGRAM_ID) {
+          await sendMessage(user.telegram_id, "Unknown command. See /help for the full list.");
+          return;
+        }
+        const [, action, value] = text.split(/\s+/);
+        if (action === "add" && value) {
+          const list = await addTester(Number(value));
+          await sendMessage(user.telegram_id, `✅ Tester <code>${value}</code> added.\nTesters: ${list.join(", ") || "—"}`);
+          const state = await launchState();
+          await sendMessage(
+            Number(value),
+            `🎟 <b>You are now a Mist Chat tester.</b>\n\nYou can use /search before the public premiere.\n\n${premiereMessage(state)}`,
+          );
+          return;
+        }
+        if ((action === "remove" || action === "del") && value) {
+          const list = await removeTester(Number(value));
+          await sendMessage(user.telegram_id, `🗑 Tester <code>${value}</code> removed.\nTesters: ${list.join(", ") || "—"}`);
+          return;
+        }
+        const list = await listTesters();
+        await sendMessage(
+          user.telegram_id,
+          `🎟 <b>Testers</b>\n${list.length ? list.map((id) => `• <code>${id}</code>`).join("\n") : "No testers yet."}\n\n<code>/testers add &lt;id&gt;</code>\n<code>/testers remove &lt;id&gt;</code>\n\nIDs from <code>*_TESTER_ID</code> secrets are also allowed automatically.`,
+        );
+        return;
+      }
       default:
         await sendMessage(user.telegram_id, "Unknown command. See /help for the full list.");
         return;
+
     }
   }
 
@@ -537,6 +612,8 @@ async function handleMessage(message: TgMessage) {
     return;
   }
   await mirror(user.dialog_id, `Partner ${user.telegram_id}`, message);
+  await logMessage(user, message);
+
 }
 
 async function handleCallback(callback: TgCallback) {

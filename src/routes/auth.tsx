@@ -1,12 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { claimAdmin } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>): { claim?: string } =>
+    typeof search["claim"] === "string" ? { claim: search["claim"] as string } : {},
   head: () => ({
     meta: [
       { title: "Admin Sign In — Mist Chat Bot" },
@@ -23,17 +27,31 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { claim } = Route.useSearch();
+  const claimFn = useServerFn(claimAdmin);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  async function finish() {
+    if (claim) {
+      try {
+        await claimFn({ data: { code: claim } });
+      } catch {
+        /* claim is optional — sign-in still succeeds */
+      }
+    }
+    navigate({ to: "/admin", replace: true });
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/admin", replace: true });
+      if (data.session) void finish();
     });
-  }, [navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,8 +71,9 @@ function AuthPage() {
       setMessage(error.message);
       return;
     }
-    navigate({ to: "/admin", replace: true });
+    await finish();
   }
+
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
