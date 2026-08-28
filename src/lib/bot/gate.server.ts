@@ -35,6 +35,63 @@ export async function isAllowedTester(telegramId: number): Promise<boolean> {
     .includes(telegramId);
 }
 
+async function saveSetting(key: string, value: string) {
+  const supabase = await db();
+  await supabase
+    .from("bot_settings")
+    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+}
+
+/** Tester ids stored in bot_settings, merged with the ones coming from secrets. */
+export async function listTesters(): Promise<number[]> {
+  const list = (await setting("tester_ids")) ?? "";
+  const stored = list
+    .split(/[,\s]+/)
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return Array.from(new Set([...stored, ...envTesterIds()]));
+}
+
+async function storedTesters(): Promise<number[]> {
+  const list = (await setting("tester_ids")) ?? "";
+  return list
+    .split(/[,\s]+/)
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n) && n > 0);
+}
+
+export async function addTester(telegramId: number): Promise<number[]> {
+  const next = Array.from(new Set([...(await storedTesters()), telegramId])).filter(
+    (n) => Number.isFinite(n) && n > 0,
+  );
+  await saveSetting("tester_ids", next.join(","));
+  return next;
+}
+
+export async function removeTester(telegramId: number): Promise<number[]> {
+  const next = (await storedTesters()).filter((id) => id !== telegramId);
+  await saveSetting("tester_ids", next.join(","));
+  return next;
+}
+
+/** One-time code used to grant the admin role to the dashboard login. */
+export async function issueClaimCode(): Promise<string> {
+  const code = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
+  const expires = new Date(Date.now() + 30 * 60_000).toISOString();
+  await saveSetting("admin_claim_code", `${code}|${expires}`);
+  return code;
+}
+
+export async function consumeClaimCode(code: string): Promise<boolean> {
+  const raw = await setting("admin_claim_code");
+  if (!raw) return false;
+  const [stored, expires] = raw.split("|");
+  if (!stored || stored !== code) return false;
+  if (!expires || new Date(expires).getTime() < Date.now()) return false;
+  await saveSetting("admin_claim_code", "");
+  return true;
+}
+
 export type LaunchState = { locked: boolean; launchAt: Date | null };
 
 export async function launchState(): Promise<LaunchState> {
