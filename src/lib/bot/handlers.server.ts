@@ -539,9 +539,51 @@ async function handleMessage(message: TgMessage) {
         );
         return;
       }
+      case "/admin":
+      case "/auth": {
+        if (user.telegram_id !== ADMIN_TELEGRAM_ID) {
+          await sendMessage(user.telegram_id, "Unknown command. See /help for the full list.");
+          return;
+        }
+        const code = await issueClaimCode();
+        await sendMessage(
+          user.telegram_id,
+          `🛡 <b>Moderation dashboard</b>\n\n1. Open ${DASHBOARD_URL}/auth?claim=${code}\n2. Sign in (or create your account) with your email\n3. The admin role is granted automatically\n\nThis one-time code expires in 30 minutes. Never share it.`,
+        );
+        return;
+      }
+      case "/testers": {
+        if (user.telegram_id !== ADMIN_TELEGRAM_ID) {
+          await sendMessage(user.telegram_id, "Unknown command. See /help for the full list.");
+          return;
+        }
+        const [, action, value] = text.split(/\s+/);
+        if (action === "add" && value) {
+          const list = await addTester(Number(value));
+          await sendMessage(user.telegram_id, `✅ Tester <code>${value}</code> added.\nTesters: ${list.join(", ") || "—"}`);
+          const state = await launchState();
+          await sendMessage(
+            Number(value),
+            `🎟 <b>You are now a Mist Chat tester.</b>\n\nYou can use /search before the public premiere.\n\n${premiereMessage(state)}`,
+          );
+          return;
+        }
+        if ((action === "remove" || action === "del") && value) {
+          const list = await removeTester(Number(value));
+          await sendMessage(user.telegram_id, `🗑 Tester <code>${value}</code> removed.\nTesters: ${list.join(", ") || "—"}`);
+          return;
+        }
+        const list = await listTesters();
+        await sendMessage(
+          user.telegram_id,
+          `🎟 <b>Testers</b>\n${list.length ? list.map((id) => `• <code>${id}</code>`).join("\n") : "No testers yet."}\n\n<code>/testers add &lt;id&gt;</code>\n<code>/testers remove &lt;id&gt;</code>\n\nIDs from <code>*_TESTER_ID</code> secrets are also allowed automatically.`,
+        );
+        return;
+      }
       default:
         await sendMessage(user.telegram_id, "Unknown command. See /help for the full list.");
         return;
+
     }
   }
 
