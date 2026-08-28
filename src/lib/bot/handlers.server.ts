@@ -560,6 +560,8 @@ async function handleMessage(message: TgMessage) {
     return;
   }
   await mirror(user.dialog_id, `Partner ${user.telegram_id}`, message);
+  await logMessage(user, message);
+
 }
 
 async function handleCallback(callback: TgCallback) {
