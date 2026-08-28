@@ -9,9 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    claim: typeof search["claim"] === "string" ? (search["claim"] as string) : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { claim?: string } =>
+    typeof search["claim"] === "string" ? { claim: search["claim"] as string } : {},
   head: () => ({
     meta: [
       { title: "Admin Sign In — Mist Chat Bot" },
