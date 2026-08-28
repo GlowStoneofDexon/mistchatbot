@@ -131,6 +131,29 @@ async function mirror(dialogId: string | null, label: string, message: TgMessage
   await copyMessage(chat, message.chat.id, message.message_id);
 }
 
+function messageKind(message: TgMessage) {
+  const m = message as unknown as Record<string, unknown>;
+  for (const kind of ["photo", "video", "animation", "sticker", "voice", "audio", "video_note", "document"]) {
+    if (m[kind]) return kind;
+  }
+  return "text";
+}
+
+/** Stores a lightweight record of a relayed message so admins can review reported dialogs. */
+async function logMessage(user: BotUser, message: TgMessage) {
+  if (!user.dialog_id) return;
+  const supabase = await db();
+  await supabase.from("dialog_messages").insert({
+    dialog_id: user.dialog_id,
+    sender_id: user.telegram_id,
+    partner_id: user.partner_id,
+    kind: messageKind(message),
+    content: message.text ?? message.caption ?? null,
+    telegram_message_id: message.message_id,
+  });
+}
+
+
 function ratingKeyboard(dialogId: string, partnerId: number): InlineKeyboard {
   const d = compact(dialogId);
   return [
