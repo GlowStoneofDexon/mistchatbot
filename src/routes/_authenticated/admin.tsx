@@ -11,6 +11,7 @@ import {
   setBanned,
   getSettings,
   saveSettings,
+  getThread,
   type AdminUser,
 } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
