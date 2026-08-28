@@ -2,6 +2,8 @@
 
 export const ADMIN_TELEGRAM_ID = 8949906548;
 export const CHANNEL_URL = "https://t.me/MistChatChannel";
+export const DASHBOARD_URL = "https://mistchatbot.lovable.app";
+
 
 async function db() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
