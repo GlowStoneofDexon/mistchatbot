@@ -61,100 +61,253 @@ export type Database = {
       }
       bot_users: {
         Row: {
+          account_status: string
+          age_confirmed_at: string | null
           banned: boolean
           blocked_until: string | null
           chats_completed: number
+          country_code: string | null
           created_at: string
           dialog_id: string | null
           dialog_started_at: string | null
           dislikes: number
           first_name: string | null
+          flagged_for_review: boolean
           language_code: string | null
+          last_link_at: string | null
+          last_next_at: string | null
           last_rated_dialog: string | null
+          last_search_at: string | null
           last_seen: string
           likes: number
+          onboarding_status: string
           partner_id: number | null
+          pref_age_max: number | null
+          pref_age_min: number | null
+          pref_country: string | null
+          pref_language: string | null
           report_count: number
+          restricted_until: string | null
+          self_age: number | null
           state: string
           telegram_id: number
+          terms_accepted_at: string | null
+          terms_version: string | null
           total_ratings: number
           username: string | null
+          vip_expires_at: string | null
+          vip_started_at: string | null
+          warnings: number
         }
         Insert: {
+          account_status?: string
+          age_confirmed_at?: string | null
           banned?: boolean
           blocked_until?: string | null
           chats_completed?: number
+          country_code?: string | null
           created_at?: string
           dialog_id?: string | null
           dialog_started_at?: string | null
           dislikes?: number
           first_name?: string | null
+          flagged_for_review?: boolean
           language_code?: string | null
+          last_link_at?: string | null
+          last_next_at?: string | null
           last_rated_dialog?: string | null
+          last_search_at?: string | null
           last_seen?: string
           likes?: number
+          onboarding_status?: string
           partner_id?: number | null
+          pref_age_max?: number | null
+          pref_age_min?: number | null
+          pref_country?: string | null
+          pref_language?: string | null
           report_count?: number
+          restricted_until?: string | null
+          self_age?: number | null
           state?: string
           telegram_id: number
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           total_ratings?: number
           username?: string | null
+          vip_expires_at?: string | null
+          vip_started_at?: string | null
+          warnings?: number
         }
         Update: {
+          account_status?: string
+          age_confirmed_at?: string | null
           banned?: boolean
           blocked_until?: string | null
           chats_completed?: number
+          country_code?: string | null
           created_at?: string
           dialog_id?: string | null
           dialog_started_at?: string | null
           dislikes?: number
           first_name?: string | null
+          flagged_for_review?: boolean
           language_code?: string | null
+          last_link_at?: string | null
+          last_next_at?: string | null
           last_rated_dialog?: string | null
+          last_search_at?: string | null
           last_seen?: string
           likes?: number
+          onboarding_status?: string
           partner_id?: number | null
+          pref_age_max?: number | null
+          pref_age_min?: number | null
+          pref_country?: string | null
+          pref_language?: string | null
           report_count?: number
+          restricted_until?: string | null
+          self_age?: number | null
           state?: string
           telegram_id?: number
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           total_ratings?: number
           username?: string | null
+          vip_expires_at?: string | null
+          vip_started_at?: string | null
+          warnings?: number
         }
         Relationships: []
       }
-      dialog_messages: {
+      match_sessions: {
         Row: {
-          content: string | null
-          created_at: string
-          dialog_id: string
+          end_reason: string | null
+          ended_at: string | null
+          ended_by: number | null
           id: string
-          kind: string
-          partner_id: number | null
-          sender_id: number
-          side: number
-          telegram_message_id: number | null
+          report_id: string | null
+          started_at: string
+          status: string
+          user_a: number
+          user_b: number
         }
         Insert: {
-          content?: string | null
-          created_at?: string
-          dialog_id: string
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by?: number | null
           id?: string
-          kind?: string
-          partner_id?: number | null
-          sender_id: number
-          side?: number
-          telegram_message_id?: number | null
+          report_id?: string | null
+          started_at?: string
+          status?: string
+          user_a: number
+          user_b: number
         }
         Update: {
-          content?: string | null
-          created_at?: string
-          dialog_id?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by?: number | null
           id?: string
-          kind?: string
-          partner_id?: number | null
-          sender_id?: number
-          side?: number
-          telegram_message_id?: number | null
+          report_id?: string | null
+          started_at?: string
+          status?: string
+          user_a?: number
+          user_b?: number
+        }
+        Relationships: []
+      }
+      moderation_actions: {
+        Row: {
+          action_type: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          reason: string | null
+          report_id: string | null
+          telegram_id: number
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          reason?: string | null
+          report_id?: string | null
+          telegram_id: number
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          reason?: string | null
+          report_id?: string | null
+          telegram_id?: number
+        }
+        Relationships: []
+      }
+      partner_interactions: {
+        Row: {
+          id: string
+          match_id: string | null
+          partner_id: number
+          started_at: string
+          user_id: number
+        }
+        Insert: {
+          id?: string
+          match_id?: string | null
+          partner_id: number
+          started_at?: string
+          user_id: number
+        }
+        Update: {
+          id?: string
+          match_id?: string | null
+          partner_id?: number
+          started_at?: string
+          user_id?: number
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          expires_at: string | null
+          id: string
+          invoice_payload: string | null
+          product: string
+          purchased_at: string
+          refund_status: string | null
+          stars_amount: number
+          status: string
+          telegram_id: number
+          telegram_payment_charge_id: string | null
+        }
+        Insert: {
+          expires_at?: string | null
+          id?: string
+          invoice_payload?: string | null
+          product?: string
+          purchased_at?: string
+          refund_status?: string | null
+          stars_amount?: number
+          status?: string
+          telegram_id: number
+          telegram_payment_charge_id?: string | null
+        }
+        Update: {
+          expires_at?: string | null
+          id?: string
+          invoice_payload?: string | null
+          product?: string
+          purchased_at?: string
+          refund_status?: string | null
+          stars_amount?: number
+          status?: string
+          telegram_id?: number
+          telegram_payment_charge_id?: string | null
         }
         Relationships: []
       }
@@ -185,30 +338,125 @@ export type Database = {
         }
         Relationships: []
       }
-      reports: {
+      report_evidence: {
         Row: {
           created_at: string
+          evidence_type: string
+          expires_at: string
+          id: string
+          metadata: Json | null
+          report_id: string
+          telegram_message_id: number | null
+          text_content: string | null
+        }
+        Insert: {
+          created_at?: string
+          evidence_type?: string
+          expires_at?: string
+          id?: string
+          metadata?: Json | null
+          report_id: string
+          telegram_message_id?: number | null
+          text_content?: string | null
+        }
+        Update: {
+          created_at?: string
+          evidence_type?: string
+          expires_at?: string
+          id?: string
+          metadata?: Json | null
+          report_id?: string
+          telegram_message_id?: number | null
+          text_content?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_evidence_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          admin_action: string | null
+          admin_notes: string | null
+          category: string | null
+          created_at: string
+          description: string | null
           dialog_id: string | null
           id: string
           reason: string
           reported_id: number
           reporter_id: number
+          resolved_at: string | null
+          severity: string | null
+          status: string
         }
         Insert: {
+          admin_action?: string | null
+          admin_notes?: string | null
+          category?: string | null
           created_at?: string
+          description?: string | null
           dialog_id?: string | null
           id?: string
           reason: string
           reported_id: number
           reporter_id: number
+          resolved_at?: string | null
+          severity?: string | null
+          status?: string
         }
         Update: {
+          admin_action?: string | null
+          admin_notes?: string | null
+          category?: string | null
           created_at?: string
+          description?: string | null
           dialog_id?: string | null
           id?: string
           reason?: string
           reported_id?: number
           reporter_id?: number
+          resolved_at?: string | null
+          severity?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          message: string
+          payment_id: string | null
+          resolved_at: string | null
+          status: string
+          telegram_id: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          message: string
+          payment_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          telegram_id: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          message?: string
+          payment_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          telegram_id?: number
         }
         Relationships: []
       }
@@ -238,6 +486,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bot_admin_stats: {
+        Args: never
+        Returns: {
+          active_chats: number
+          banned: number
+          open_reports: number
+          restricted: number
+          searching: number
+          stars_revenue: number
+          total_users: number
+          vip_active: number
+        }[]
+      }
       bot_public_stats: {
         Args: never
         Returns: {
@@ -261,6 +522,7 @@ export type Database = {
           partner: number
         }[]
       }
+      partner_slots_used: { Args: { p_user: number }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
