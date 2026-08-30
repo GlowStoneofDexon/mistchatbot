@@ -1,4 +1,5 @@
 export const BOT_NAME = "Mist Chat Bot";
+export const CHANNEL = "@MistChatChannel";
 
 export const WELCOME = `<b>🌫 Welcome to ${BOT_NAME}</b>
 
@@ -9,15 +10,35 @@ Chat anonymously with a random stranger. Nobody sees your name, username or phot
 🛑 /stop — end the chat
 🆘 /help — all commands
 
-📣 Updates & launch news: @MistChatChannel
+📣 Updates & launch news: ${CHANNEL}
 
 By using this bot you accept the /rules and /terms.`;
+
+export const AGE_GATE = `<b>🔞 Adults only (18+)</b>
+
+${BOT_NAME} is for adults. Please confirm that you are 18 years old or older.
+
+If you are under 18 you cannot be matched with anyone.`;
+
+export const AGE_DENIED = `🚫 <b>You must be 18 or older to chat here.</b>
+
+You can still read /rules and /terms, but matching is disabled for your account.`;
+
+export const TERMS_GATE = `<b>📖 One last step</b>
+
+Please read the /terms and /rules, then accept them to start chatting.`;
+
+export const ONBOARDING_DONE = `✅ <b>All set!</b>
+
+Tap /search whenever you want to meet someone new.
+💎 /vip — unlock unlimited partners and matching filters.`;
 
 export const HELP = `<b>🆘 How to use ${BOT_NAME}</b>
 
 🔍 /search — Find a partner
 🆕 /next — Stop current dialog and find a new partner
 🛑 /stop — Stop current dialog
+🚩 /report — Report your current or last partner
 🆘 /help — How to use the bot
 💎 /vip — Become a VIP
 🔗 /link — Send your Telegram profile URL to your partner
@@ -41,43 +62,49 @@ export const RULES = `<b>📋 Rules of the chat</b>
 7. Respect your partner. If you do not like the chat, just use /next.
 
 <b>Enforcement</b>
-• 👎 If 65% or more of your ratings are dislikes (after at least 10 ratings), you cannot search for 24 hours.
-• 🚩 10 reports from 10 different people = permanent ban.
+• Reports are reviewed by human moderators — they decide warnings, temporary restrictions or bans.
+• Repeated dislikes or reports flag your account for review.
 • Illegal activity found in a report = immediate permanent ban.`;
 
 export const TERMS = `<b>📖 Terms and Conditions</b>
 
 • You must be 18 or older to use ${BOT_NAME}.
 • You are solely responsible for everything you send.
-• We store only your Telegram ID, username and moderation counters — no chat history is kept in our database.
-• Active dialogs may be mirrored to a private moderation log so reports can be reviewed. Do not share sensitive personal data.
-• We may block or ban any account that breaks the /rules, without notice or refund.
+• We store only your Telegram ID, username, preferences and moderation counters.
+• We do <b>not</b> store your conversations or media. Only evidence you explicitly send when filing a /report is kept, for 30 days.
+• We may restrict or ban any account that breaks the /rules, without notice or refund.
+• VIP is sold with Telegram Stars inside the bot. Stars purchases are handled by Telegram.
 • The service is provided "as is", without warranty of any kind.
 • Anonymity is not a guarantee of privacy — never share information that could identify you.
 • Using the bot means you accept these terms and our /rules.`;
 
-export const VIP = `<b>💎 VIP</b>
+export function vipText(stars: number, days: number, limit: number, vipUntil?: string | null) {
+  const status = vipUntil
+    ? `\n\n✅ <b>You are VIP</b> until <b>${vipUntil}</b>.`
+    : `\n\n🔓 Free plan: up to <b>${limit}</b> different partners every 24 hours.`;
+  return `<b>💎 Mist VIP</b>
 
-Right now everything is <b>free and unlimited</b> — chat with as many people as you want, no limits.
+• ♾ Unlimited partners — no 24-hour limit
+• 🎯 Matching filters: age, country and language
+• ⚡ Priority in the matching queue
+• 💎 VIP badge shown to your partner
 
-VIP is coming soon and will add:
-• Gender and country preferences
-• Priority in the matching queue
-• A VIP badge shown to your partner
+<b>${stars} ⭐ Telegram Stars / ${days} days</b>${status}
 
-Payments will be accepted via <b>bKash</b>, <b>Nagad</b> and <b>cryptocurrency</b>. Nothing is charged today.
-
-📣 Follow @MistChatChannel to hear when VIP goes live.`;
+Tap the button below to pay with Telegram Stars. Need help? /paysupport`;
+}
 
 export const PAYSUPPORT = `<b>💰 Payment support</b>
 
-There are no paid features yet, so no payments are being collected and there is nothing to refund.
+VIP is purchased with <b>Telegram Stars</b> inside this bot. Telegram handles the transaction, so your card details never reach us.
 
-When VIP launches (bKash / Nagad / crypto), refund requests can be sent here with /paysupport and will be handled within 72 hours.`;
+• Wrong charge or missing VIP? Send /paysupport followed by a short message and we will reply within 72 hours.
+• Refunds for Stars are handled by Telegram support in line with their policy.`;
 
 export const REPORT_REASONS: { code: string; label: string }[] = [
   { code: "illegal", label: "🚫 Illegal goods or activity" },
   { code: "sexual", label: "🔞 Sexual / abusive content" },
+  { code: "minor", label: "🧒 Content involving a minor" },
   { code: "harassment", label: "😡 Harassment or threats" },
   { code: "spam", label: "📢 Spam or advertising" },
   { code: "other", label: "❓ Other" },
@@ -86,3 +113,13 @@ export const REPORT_REASONS: { code: string; label: string }[] = [
 export function reasonLabel(code: string) {
   return REPORT_REASONS.find((r) => r.code === code)?.label ?? code;
 }
+
+export const EVIDENCE_PROMPT = `🚩 <b>Report received.</b>
+
+If you want moderators to see what happened, send or forward the messages now (up to 5). Nothing else from the chat is stored.
+
+Send /done when you are finished, or /skip to submit the report without evidence.`;
+
+export const EVIDENCE_SAVED = "📎 Evidence attached. Send more, or /done when finished.";
+export const EVIDENCE_CLOSED =
+  "✅ Report submitted to our moderators. Thank you for keeping the bot safe.";
