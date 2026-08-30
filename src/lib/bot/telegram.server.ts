@@ -69,3 +69,30 @@ export function copyMessage(toChatId: number | string, fromChatId: number, messa
 export function answerCallbackQuery(id: string, text?: string) {
   return tg("answerCallbackQuery", { callback_query_id: id, ...(text ? { text } : {}) });
 }
+
+/** Telegram Stars invoice (currency XTR, no provider token). */
+export function sendStarsInvoice(opts: {
+  chatId: number;
+  title: string;
+  description: string;
+  payload: string;
+  stars: number;
+}) {
+  return tg("sendInvoice", {
+    chat_id: opts.chatId,
+    title: opts.title,
+    description: opts.description,
+    payload: opts.payload,
+    provider_token: "",
+    currency: "XTR",
+    prices: [{ label: opts.title, amount: opts.stars }],
+  });
+}
+
+export function answerPreCheckoutQuery(id: string, ok = true, errorMessage?: string) {
+  return tg("answerPreCheckoutQuery", {
+    pre_checkout_query_id: id,
+    ok,
+    ...(ok ? {} : { error_message: errorMessage ?? "Payment could not be processed." }),
+  });
+}
