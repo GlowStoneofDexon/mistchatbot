@@ -292,13 +292,11 @@ function AdminPage() {
                   <PartnerCard label="Partner 1 (reporter)" user={report.reporter} />
                   <PartnerCard label="Partner 2 (reported)" user={report.reported} />
                 </div>
-                {report.dialog_id && (
-                  <ThreadViewer
-                    dialogId={report.dialog_id}
-                    reporterId={report.reporter?.telegram_id ?? null}
-                    reportedId={report.reported?.telegram_id ?? null}
-                  />
-                )}
+                <EvidenceViewer
+                  reportId={report.id}
+                  reporterId={report.reporter?.telegram_id ?? null}
+                  reportedId={report.reported?.telegram_id ?? null}
+                />4
 
                 {report.reported && (
                   <div className="flex gap-2">
