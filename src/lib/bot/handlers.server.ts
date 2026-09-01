@@ -109,6 +109,7 @@ type BotUser = {
   last_link_at: string | null;
   country_code: string | null;
   language_code: string | null;
+  flagged_for_review: boolean;
 };
 
 async function db() {
