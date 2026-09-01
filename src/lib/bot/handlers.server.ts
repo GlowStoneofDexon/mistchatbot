@@ -542,6 +542,11 @@ async function openReport(reporter: BotUser, reportedId: number, dialogId: strin
     );
   }
 
+  // Safety: a submitted report always ends the connection.
+  if (reporter.state === "chatting" && reporter.partner_id === reportedId) {
+    await endDialog(reporter, { notifyPartner: true, reason: "reported" });
+  }
+
   await setEvidenceSession(reporter.telegram_id, {
     reportId: inserted.id,
     count: 0,
