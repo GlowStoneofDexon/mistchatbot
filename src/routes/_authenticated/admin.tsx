@@ -296,7 +296,7 @@ function AdminPage() {
                   reportId={report.id}
                   reporterId={report.reporter?.telegram_id ?? null}
                   reportedId={report.reported?.telegram_id ?? null}
-                />4
+                />
 
                 {report.reported && (
                   <div className="flex gap-2">
