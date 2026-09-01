@@ -175,28 +175,30 @@ export const saveSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export type ThreadMessage = {
+export type ReportEvidence = {
   id: string;
-  sender_id: number;
-  kind: string;
-  content: string | null;
+  evidence_type: string;
+  text_content: string | null;
+  telegram_message_id: number | null;
+  metadata: { submitted_by?: number } | null;
   created_at: string;
+  expires_at: string;
 };
 
-/** Full Partner 1 / Partner 2 transcript of a reported dialog. */
-export const getThread = createServerFn({ method: "POST" })
+/** Evidence messages explicitly submitted by the reporter for one case. */
+export const getEvidence = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { dialogId: string }) => ({ dialogId: String(input.dialogId) }))
-  .handler(async ({ data, context }): Promise<ThreadMessage[]> => {
+  .inputValidator((input: { reportId: string }) => ({ reportId: String(input.reportId) }))
+  .handler(async ({ data, context }): Promise<ReportEvidence[]> => {
     await assertAdmin(context as any);
     const db = await admin();
     const { data: rows } = await db
-      .from("dialog_messages")
-      .select("id, sender_id, kind, content, created_at")
-      .eq("dialog_id", data.dialogId)
+      .from("report_evidence")
+      .select("id, evidence_type, text_content, telegram_message_id, metadata, created_at, expires_at")
+      .eq("report_id", data.reportId)
       .order("created_at", { ascending: true })
-      .limit(500);
-    return (rows ?? []) as ThreadMessage[];
+      .limit(50);
+    return (rows ?? []) as ReportEvidence[];
   });
 
 /** Redeems the one-time code from the bot's /admin command and grants the admin role. */

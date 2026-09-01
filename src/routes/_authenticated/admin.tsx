@@ -11,7 +11,7 @@ import {
   setBanned,
   getSettings,
   saveSettings,
-  getThread,
+  getEvidence,
   type AdminUser,
 } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
@@ -36,58 +36,67 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-function ThreadViewer({
-  dialogId,
+function EvidenceViewer({
+  reportId,
   reporterId,
   reportedId,
 }: {
-  dialogId: string;
+  reportId: string;
   reporterId: number | null;
   reportedId: number | null;
 }) {
   const [open, setOpen] = useState(false);
-  const fetchThread = useServerFn(getThread);
-  const threadQuery = useQuery({
-    queryKey: ["admin-thread", dialogId],
-    queryFn: () => fetchThread({ data: { dialogId } }),
+  const fetchEvidence = useServerFn(getEvidence);
+  const evidenceQuery = useQuery({
+    queryKey: ["admin-evidence", reportId],
+    queryFn: () => fetchEvidence({ data: { reportId } }),
     enabled: open,
   });
 
-  const messages = threadQuery.data ?? [];
+  const items = evidenceQuery.data ?? [];
 
   return (
     <div className="space-y-2">
       <Button variant="secondary" size="sm" onClick={() => setOpen((v) => !v)}>
-        {open ? "Hide conversation" : "View conversation"}
+        {open ? "Hide evidence" : "View evidence"}
       </Button>
       {open && (
         <div className="max-h-80 space-y-2 overflow-y-auto rounded-lg border border-border p-3">
-          {threadQuery.isLoading && <p className="text-sm text-muted-foreground">Loading messages…</p>}
-          {!threadQuery.isLoading && messages.length === 0 && (
+          {evidenceQuery.isLoading && (
+            <p className="text-sm text-muted-foreground">Loading evidence…</p>
+          )}
+          {!evidenceQuery.isLoading && items.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No stored messages for this dialog (it may predate message logging).
+              No evidence submitted for this case (conversations are never stored — the reporter must
+              forward specific messages).
             </p>
           )}
-          {messages.map((m) => {
-            const isReporter = reporterId != null && Number(m.sender_id) === Number(reporterId);
-            const label = isReporter
-              ? "Partner 1"
-              : reportedId != null && Number(m.sender_id) === Number(reportedId)
-                ? "Partner 2"
-                : "Unknown";
+          {items.map((item) => {
+            const submitter = item.metadata?.submitted_by ?? null;
+            const label =
+              submitter != null && reporterId != null && Number(submitter) === Number(reporterId)
+                ? "Partner 1 (reporter)"
+                : submitter != null && reportedId != null && Number(submitter) === Number(reportedId)
+                  ? "Partner 2 (reported)"
+                  : "Submitted";
             return (
-              <div
-                key={m.id}
-                className={`rounded-md border border-border p-2 text-sm ${isReporter ? "" : "bg-muted/40"}`}
-              >
+              <div key={item.id} className="rounded-md border border-border p-2 text-sm">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">{label}</span>
-                  <span className="font-mono">{m.sender_id}</span>
-                  <span>{new Date(m.created_at).toLocaleString()}</span>
-                  {m.kind !== "text" && <Badge variant="secondary">{m.kind}</Badge>}
+                  {submitter != null && <span className="font-mono">{submitter}</span>}
+                  <span>{new Date(item.created_at).toLocaleString()}</span>
+                  {item.evidence_type !== "text" && (
+                    <Badge variant="secondary">{item.evidence_type}</Badge>
+                  )}
+                  <span>expires {new Date(item.expires_at).toLocaleDateString()}</span>
                 </div>
                 <p className="mt-1 whitespace-pre-wrap text-foreground">
-                  {m.content ?? <span className="text-muted-foreground">[{m.kind}]</span>}
+                  {item.text_content ?? (
+                    <span className="text-muted-foreground">
+                      [{item.evidence_type}] forwarded to the admin chat
+                      {item.telegram_message_id ? ` · msg ${item.telegram_message_id}` : ""}
+                    </span>
+                  )}
                 </p>
               </div>
             );
@@ -283,13 +292,11 @@ function AdminPage() {
                   <PartnerCard label="Partner 1 (reporter)" user={report.reporter} />
                   <PartnerCard label="Partner 2 (reported)" user={report.reported} />
                 </div>
-                {report.dialog_id && (
-                  <ThreadViewer
-                    dialogId={report.dialog_id}
-                    reporterId={report.reporter?.telegram_id ?? null}
-                    reportedId={report.reported?.telegram_id ?? null}
-                  />
-                )}
+                <EvidenceViewer
+                  reportId={report.id}
+                  reporterId={report.reporter?.telegram_id ?? null}
+                  reportedId={report.reported?.telegram_id ?? null}
+                />
 
                 {report.reported && (
                   <div className="flex gap-2">

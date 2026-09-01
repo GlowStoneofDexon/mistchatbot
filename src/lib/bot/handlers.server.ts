@@ -109,6 +109,7 @@ type BotUser = {
   last_link_at: string | null;
   country_code: string | null;
   language_code: string | null;
+  flagged_for_review: boolean;
 };
 
 async function db() {
@@ -539,6 +540,11 @@ async function openReport(reporter: BotUser, reportedId: number, dialogId: strin
         reportedId,
       )}\n\nDistinct reports against Partner 2: <b>${distinct}</b>\n\nDecide in the dashboard: ${DASHBOARD_URL}/admin`,
     );
+  }
+
+  // Safety: a submitted report always ends the connection.
+  if (reporter.state === "chatting" && reporter.partner_id === reportedId) {
+    await endDialog(reporter, { notifyPartner: true, reason: "reported" });
   }
 
   await setEvidenceSession(reporter.telegram_id, {
