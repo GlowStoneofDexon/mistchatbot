@@ -78,10 +78,27 @@ export const TERMS = `<b>📖 Terms and Conditions</b>
 • Anonymity is not a guarantee of privacy — never share information that could identify you.
 • Using the bot means you accept these terms and our /rules.`;
 
-export function vipText(stars: number, days: number, limit: number, vipUntil?: string | null) {
+export type VipPlan = { code: "week" | "month" | "year"; label: string; stars: number; days: number };
+
+/** Percentage saved against the monthly price, rounded to a clean figure. */
+export function planDiscount(plan: VipPlan, monthly: VipPlan) {
+  const perDayMonthly = monthly.stars / monthly.days;
+  const perDay = plan.stars / plan.days;
+  const off = Math.round((1 - perDay / perDayMonthly) * 20) * 5;
+  return off > 0 ? off : 0;
+}
+
+export function vipText(plans: VipPlan[], limit: number, vipUntil?: string | null) {
+  const monthly = plans.find((p) => p.code === "month") ?? plans[0]!;
   const status = vipUntil
     ? `\n\n✅ <b>You are VIP</b> until <b>${vipUntil}</b>.`
     : `\n\n🔓 Free plan: up to <b>${limit}</b> different partners every 24 hours.`;
+  const lines = plans
+    .map((p) => {
+      const off = planDiscount(p, monthly);
+      return `• <b>${p.stars} ⭐</b> — ${p.label}${off ? ` <i>(save ${off}%)</i>` : ""}`;
+    })
+    .join("\n");
   return `<b>💎 Mist VIP</b>
 
 • ♾ Unlimited partners — no 24-hour limit
@@ -89,17 +106,21 @@ export function vipText(stars: number, days: number, limit: number, vipUntil?: s
 • ⚡ Priority in the matching queue
 • 💎 VIP badge shown to your partner
 
-<b>${stars} ⭐ Telegram Stars / ${days} days</b>${status}
+<b>Plans</b>
+${lines}${status}
 
-Tap the button below to pay with Telegram Stars. Need help? /paysupport`;
+Pick a plan below and pay with Telegram Stars. Need help? /paysupport`;
 }
 
-export const PAYSUPPORT = `<b>💰 Payment support</b>
+export const PAYSUPPORT = `⭐ <b>Payment Support</b>
 
-VIP is purchased with <b>Telegram Stars</b> inside this bot. Telegram handles the transaction, so your card details never reach us.
+Charged wrong or VIP missing? Message us with the issue — e.g. "I'm having an issue with my VIP."
 
-• Wrong charge or missing VIP? Send /paysupport followed by a short message and we will reply within 72 hours.
-• Refunds for Stars are handled by Telegram support in line with their policy.`;
+Still stuck? Contact admin: @MutasimFuadAbir`;
+
+export const PAYSUPPORT_SENT = `📨 <b>Message sent to support.</b>
+
+We reply within 72 hours. Back to chatting 👇`;
 
 export const REPORT_REASONS: { code: string; label: string }[] = [
   { code: "illegal", label: "🚫 Illegal goods or activity" },

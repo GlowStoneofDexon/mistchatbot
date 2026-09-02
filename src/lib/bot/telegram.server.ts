@@ -41,7 +41,8 @@ export async function tg<T = unknown>(
   return (parsed.result ?? null) as T | null;
 }
 
-export type InlineKeyboard = { text: string; callback_data: string }[][];
+export type InlineButton = { text: string; callback_data?: string; url?: string };
+export type InlineKeyboard = InlineButton[][];
 
 export function sendMessage(
   chatId: number | string,
@@ -94,5 +95,27 @@ export function answerPreCheckoutQuery(id: string, ok = true, errorMessage?: str
     pre_checkout_query_id: id,
     ok,
     ...(ok ? {} : { error_message: errorMessage ?? "Payment could not be processed." }),
+  });
+}
+
+/** Membership status of a user in a channel/group ("left" when not joined). */
+export async function getChatMemberStatus(chat: string, userId: number): Promise<string | null> {
+  const result = await tg<{ status?: string }>("getChatMember", { chat_id: chat, user_id: userId });
+  return result?.status ?? null;
+}
+
+export function editMessageText(
+  chatId: number | string,
+  messageId: number,
+  text: string,
+  keyboard?: InlineKeyboard,
+) {
+  return tg("editMessageText", {
+    chat_id: chatId,
+    message_id: messageId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    ...(keyboard ? { reply_markup: { inline_keyboard: keyboard } } : {}),
   });
 }
