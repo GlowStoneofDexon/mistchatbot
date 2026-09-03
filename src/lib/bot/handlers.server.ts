@@ -965,20 +965,12 @@ async function handleMessage(message: TgMessage) {
         return;
       case "/paysupport": {
         const note = text.slice("/paysupport".length).trim();
-        await sendMessage(user.telegram_id, PAYSUPPORT);
         if (note) {
-          const supabase = await db();
-          await supabase.from("support_tickets").insert({
-            telegram_id: user.telegram_id,
-            category: "payment",
-            message: note,
-          });
-          await sendMessage(user.telegram_id, "📨 Your message was sent to support. We reply within 72 hours.");
-          const admin = await adminChatId();
-          if (admin) {
-            await sendMessage(admin, `💰 <b>Payment support</b> from ${tag(user, user.telegram_id)}\n\n${note}`);
-          }
+          await fileSupportTicket(user, note);
+          return;
         }
+        await setSupportSession(user.telegram_id, true);
+        await sendMessage(user.telegram_id, PAYSUPPORT);
         return;
       }
       case "/myid":
