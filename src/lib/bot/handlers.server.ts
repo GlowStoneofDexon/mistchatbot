@@ -27,15 +27,20 @@ import {
   chatBlocked,
   launchState,
   premiereMessage,
-  ADMIN_TELEGRAM_ID,
-  DASHBOARD_URL,
-  issueClaimCode,
   listTesters,
   addTester,
   removeTester,
 } from "./gate.server";
 import { consume, FLOOD_MESSAGE } from "./limits.server";
-import { settings, num, bool } from "./settings.server";
+import { settings, num, bool, vipPlans } from "./settings.server";
+import {
+  adminMenu,
+  handleAdminCallback,
+  handleAdminInput,
+  getAdminSession,
+  isBotAdmin,
+  forceJoinBlock,
+} from "./admin.server";
 
 type TgUser = {
   id: number;
