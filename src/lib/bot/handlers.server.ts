@@ -12,6 +12,7 @@ import {
   RULES,
   TERMS,
   PAYSUPPORT,
+  PAYSUPPORT_SENT,
   AGE_GATE,
   AGE_DENIED,
   TERMS_GATE,
@@ -27,15 +28,20 @@ import {
   chatBlocked,
   launchState,
   premiereMessage,
-  ADMIN_TELEGRAM_ID,
-  DASHBOARD_URL,
-  issueClaimCode,
   listTesters,
   addTester,
   removeTester,
 } from "./gate.server";
 import { consume, FLOOD_MESSAGE } from "./limits.server";
-import { settings, num, bool } from "./settings.server";
+import { settings, num, bool, vipPlans, content } from "./settings.server";
+import {
+  adminMenu,
+  handleAdminCallback,
+  handleAdminInput,
+  getAdminSession,
+  isBotAdmin,
+  forceJoinBlock,
+} from "./admin.server";
 
 type TgUser = {
   id: number;
@@ -244,6 +250,50 @@ async function setEvidenceSession(id: number, session: EvidenceSession | null) {
   );
 }
 
+/* ------------------------------------------------------------------ payment support */
+
+const supportKey = (id: number) => `support:${id}`;
+
+async function getSupportSession(id: number): Promise<boolean> {
+  const raw = await getSetting(supportKey(id));
+  return Boolean(raw) && Number(raw) > Date.now();
+}
+
+async function setSupportSession(id: number, open: boolean) {
+  await saveSetting(supportKey(id), open ? String(Date.now() + 15 * 60_000) : "");
+}
+
+async function fileSupportTicket(user: BotUser, body: string) {
+  const supabase = await db();
+  await supabase.from("support_tickets").insert({
+    telegram_id: user.telegram_id,
+    category: "payment",
+    message: body.slice(0, 2000),
+  });
+  await setSupportSession(user.telegram_id, false);
+  const admin = await adminChatId();
+  if (admin) {
+    await sendMessage(admin, `💰 <b>Payment support</b> from ${tag(user, user.telegram_id)}\n\n${body.slice(0, 1500)}`);
+  }
+  for (const id of await botAdminIds()) {
+    await sendMessage(id, `💰 <b>Payment support</b> from ${tag(user, user.telegram_id)}\n\n${body.slice(0, 1500)}`);
+  }
+  await sendMessage(user.telegram_id, PAYSUPPORT_SENT, [
+    [{ text: "🔍 Find a partner", callback_data: "search" }],
+  ]);
+}
+
+/** Admin Telegram IDs that should receive live notifications. */
+async function botAdminIds(): Promise<number[]> {
+  const { ADMIN_TELEGRAM_ID } = await import("./gate.server");
+  const extra = (await getSetting("admin_ids")) ?? "";
+  const ids = extra
+    .split(/[,\s]+/)
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return Array.from(new Set([ADMIN_TELEGRAM_ID, ...ids]));
+}
+
 /* ------------------------------------------------------------------ dialogs */
 
 function ratingKeyboard(dialogId: string, partnerId: number): InlineKeyboard {
@@ -313,6 +363,7 @@ async function endDialog(user: BotUser, opts: { notifyPartner: boolean; reason?:
 
 /** Free users may talk to a limited number of distinct partners per rolling 24 hours. */
 async function partnerLimitBlock(user: BotUser, config: Record<string, string>): Promise<string | null> {
+  if (!bool(config, "paid_model_enabled")) return null;
   if (isVip(user)) return null;
   const limit = num(config, "free_daily_partner_limit");
   const supabase = await db();
@@ -377,6 +428,12 @@ async function startSearch(user: BotUser) {
     return;
   }
 
+  const join = await forceJoinBlock(user.telegram_id);
+  if (join) {
+    await sendMessage(user.telegram_id, join.text, join.keyboard);
+    return;
+  }
+
   const limited = await partnerLimitBlock(user, config);
   if (limited) {
     await sendMessage(user.telegram_id, limited, [[{ text: "💎 Get VIP", callback_data: "vip" }]]);
@@ -426,7 +483,7 @@ async function flagForReview(userId: number, reason: string) {
   if (admin) {
     await sendMessage(
       admin,
-      `⚠️ <b>Flagged for review</b>\n${tag(target, userId)}\nReason: ${reason}\n\nReview it in the dashboard: ${DASHBOARD_URL}/admin`,
+      `⚠️ <b>Flagged for review</b>\n${tag(target, userId)}\nReason: ${reason}\n\nOpen /admin → 👤 Users to decide.`,
     );
   }
 }
@@ -538,7 +595,7 @@ async function openReport(reporter: BotUser, reportedId: number, dialogId: strin
       )}\n\n<b>Partner 1 (reporter)</b>: ${tag(reporter, reporter.telegram_id)}\n<b>Partner 2 (reported)</b>: ${tag(
         reported,
         reportedId,
-      )}\n\nDistinct reports against Partner 2: <b>${distinct}</b>\n\nDecide in the dashboard: ${DASHBOARD_URL}/admin`,
+      )}\n\nDistinct reports against Partner 2: <b>${distinct}</b>\n\nOpen /admin → 🚩 Reports to decide.`,
     );
   }
 
@@ -630,25 +687,56 @@ async function handleRating(rater: BotUser, ratedId: number, dialogId: string, v
 
 async function sendVipOffer(user: BotUser) {
   const config = await settings();
-  const stars = num(config, "vip_price_stars");
-  const days = num(config, "vip_days");
   const limit = num(config, "free_daily_partner_limit");
   const until = isVip(user) ? new Date(user.vip_expires_at!).toUTCString() : null;
 
-  await sendMessage(user.telegram_id, vipText(stars, days, limit, until));
+  if (!bool(config, "paid_model_enabled")) {
+    await sendMessage(
+      user.telegram_id,
+      "🎉 <b>Everything is free right now</b>\n\nUnlimited partners for everyone — VIP plans are not on sale yet.\n\n📣 Follow @MistChatChannel to hear when VIP launches.",
+    );
+    return;
+  }
+
+  const plans = vipPlans(config);
+  await sendMessage(
+    user.telegram_id,
+    `${vipText(plans, limit, until)}${(() => {
+      const extra = content(config, "vip", "");
+      return extra ? `\n\n${extra}` : "";
+    })()}`,
+    plans.map((p) => [
+      { text: `${p.stars} ⭐ · ${p.label}`, callback_data: `vip:${p.code}` },
+    ]),
+  );
+}
+
+async function sendVipInvoice(user: BotUser, code: string) {
+  const config = await settings();
+  if (!bool(config, "paid_model_enabled")) {
+    await sendVipOffer(user);
+    return;
+  }
+  const plan = vipPlans(config).find((p) => p.code === code);
+  if (!plan) {
+    await sendVipOffer(user);
+    return;
+  }
   await sendStarsInvoice({
     chatId: user.telegram_id,
-    title: `Mist VIP — ${days} days`,
+    title: `Mist VIP — ${plan.days} days`,
     description: "Unlimited partners, matching filters, priority queue and a VIP badge.",
-    payload: `vip_${days}d:${user.telegram_id}:${Date.now()}`,
-    stars,
+    payload: `vip:${plan.code}:${plan.days}:${user.telegram_id}:${Date.now()}`,
+    stars: plan.stars,
   });
 }
 
 async function activateVip(user: BotUser, payment: TgSuccessfulPayment) {
   const supabase = await db();
   const config = await settings();
-  const days = num(config, "vip_days");
+  const parts = payment.invoice_payload.split(":");
+  const fromPayload = Number(parts[0] === "vip" ? parts[2] : NaN);
+  const days = Number.isFinite(fromPayload) && fromPayload > 0 ? fromPayload : num(config, "vip_days");
   const base = isVip(user) ? new Date(user.vip_expires_at!).getTime() : Date.now();
   const expires = new Date(base + days * 86_400_000).toISOString();
 
@@ -826,6 +914,29 @@ async function handleMessage(message: TgMessage) {
     return;
   }
 
+  // Admin panel prompts (ban target, broadcast copy, plan prices, …).
+  if (await isBotAdmin(user.telegram_id)) {
+    const adminSession = await getAdminSession(user.telegram_id);
+    if (adminSession) {
+      await handleAdminInput(user.telegram_id, text || message.caption || "", message);
+      return;
+    }
+  }
+
+  // Payment support: the next message the user sends becomes the ticket.
+  if (await getSupportSession(user.telegram_id)) {
+    if (text === "/cancel") {
+      await setSupportSession(user.telegram_id, false);
+      await sendMessage(user.telegram_id, "Cancelled.");
+      return;
+    }
+    if (!text.startsWith("/")) {
+      await fileSupportTicket(user, text || message.caption || "(media)");
+      return;
+    }
+    await setSupportSession(user.telegram_id, false);
+  }
+
   const evidence = await getEvidenceSession(user.telegram_id);
   if (evidence) {
     if (text === "/done" || text === "/skip") {
@@ -841,20 +952,20 @@ async function handleMessage(message: TgMessage) {
     const command = text.split(/[\s@]/)[0];
     switch (command) {
       case "/start": {
-        await sendMessage(user.telegram_id, WELCOME);
+        await sendMessage(user.telegram_id, content(await settings(), "welcome", WELCOME));
         if (await onboardingGate(user)) return;
         const gate = await chatBlocked(user.telegram_id);
         if (gate) await sendMessage(user.telegram_id, gate);
         return;
       }
       case "/help":
-        await sendMessage(user.telegram_id, HELP);
+        await sendMessage(user.telegram_id, content(await settings(), "help", HELP));
         return;
       case "/rules":
-        await sendMessage(user.telegram_id, RULES);
+        await sendMessage(user.telegram_id, content(await settings(), "rules", RULES));
         return;
       case "/terms":
-        await sendMessage(user.telegram_id, TERMS);
+        await sendMessage(user.telegram_id, content(await settings(), "terms", TERMS));
         return;
       case "/vip":
         await sendVipOffer(user);
@@ -864,20 +975,12 @@ async function handleMessage(message: TgMessage) {
         return;
       case "/paysupport": {
         const note = text.slice("/paysupport".length).trim();
-        await sendMessage(user.telegram_id, PAYSUPPORT);
         if (note) {
-          const supabase = await db();
-          await supabase.from("support_tickets").insert({
-            telegram_id: user.telegram_id,
-            category: "payment",
-            message: note,
-          });
-          await sendMessage(user.telegram_id, "📨 Your message was sent to support. We reply within 72 hours.");
-          const admin = await adminChatId();
-          if (admin) {
-            await sendMessage(admin, `💰 <b>Payment support</b> from ${tag(user, user.telegram_id)}\n\n${note}`);
-          }
+          await fileSupportTicket(user, note);
+          return;
         }
+        await setSupportSession(user.telegram_id, true);
+        await sendMessage(user.telegram_id, content(await settings(), "paysupport", PAYSUPPORT));
         return;
       }
       case "/myid":
@@ -959,20 +1062,19 @@ async function handleMessage(message: TgMessage) {
         return;
       }
       case "/admin":
-      case "/auth": {
-        if (user.telegram_id !== ADMIN_TELEGRAM_ID) {
+      case "/panel": {
+        if (!(await isBotAdmin(user.telegram_id))) {
           await sendMessage(user.telegram_id, "Unknown command. See /help for the full list.");
           return;
         }
-        const code = await issueClaimCode();
-        await sendMessage(
-          user.telegram_id,
-          `🛡 <b>Moderation dashboard</b>\n\n1. Open ${DASHBOARD_URL}/auth?claim=${code}\n2. Sign in (or create your account) with your email\n3. The admin role is granted automatically\n\nThis one-time code expires in 30 minutes. Never share it.`,
-        );
+        await adminMenu(user.telegram_id);
         return;
       }
+      case "/cancel":
+        await sendMessage(user.telegram_id, "Nothing to cancel.");
+        return;
       case "/testers": {
-        if (user.telegram_id !== ADMIN_TELEGRAM_ID) {
+        if (!(await isBotAdmin(user.telegram_id))) {
           await sendMessage(user.telegram_id, "Unknown command. See /help for the full list.");
           return;
         }
@@ -1066,8 +1168,19 @@ async function handleCallback(callback: TgCallback) {
     return;
   }
 
+  if (data.startsWith("a:")) {
+    await handleAdminCallback(user.telegram_id, data, callback.message?.message_id);
+    return;
+  }
+
   if (data === "vip") {
     await sendVipOffer(user);
+    return;
+  }
+
+  const plan = /^vip:(week|month|year)$/.exec(data);
+  if (plan) {
+    await sendVipInvoice(user, plan[1]!);
     return;
   }
 
