@@ -74,23 +74,6 @@ export async function removeTester(telegramId: number): Promise<number[]> {
   return next;
 }
 
-/** One-time code used to grant the admin role to the dashboard login. */
-export async function issueClaimCode(): Promise<string> {
-  const code = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
-  const expires = new Date(Date.now() + 30 * 60_000).toISOString();
-  await saveSetting("admin_claim_code", `${code}|${expires}`);
-  return code;
-}
-
-export async function consumeClaimCode(code: string): Promise<boolean> {
-  const raw = await setting("admin_claim_code");
-  if (!raw) return false;
-  const [stored, expires] = raw.split("|");
-  if (!stored || stored !== code) return false;
-  if (!expires || new Date(expires).getTime() < Date.now()) return false;
-  await saveSetting("admin_claim_code", "");
-  return true;
-}
 
 export type LaunchState = { locked: boolean; launchAt: Date | null };
 
