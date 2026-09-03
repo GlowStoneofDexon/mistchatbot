@@ -249,6 +249,50 @@ async function setEvidenceSession(id: number, session: EvidenceSession | null) {
   );
 }
 
+/* ------------------------------------------------------------------ payment support */
+
+const supportKey = (id: number) => `support:${id}`;
+
+async function getSupportSession(id: number): Promise<boolean> {
+  const raw = await getSetting(supportKey(id));
+  return Boolean(raw) && Number(raw) > Date.now();
+}
+
+async function setSupportSession(id: number, open: boolean) {
+  await saveSetting(supportKey(id), open ? String(Date.now() + 15 * 60_000) : "");
+}
+
+async function fileSupportTicket(user: BotUser, body: string) {
+  const supabase = await db();
+  await supabase.from("support_tickets").insert({
+    telegram_id: user.telegram_id,
+    category: "payment",
+    message: body.slice(0, 2000),
+  });
+  await setSupportSession(user.telegram_id, false);
+  const admin = await adminChatId();
+  if (admin) {
+    await sendMessage(admin, `💰 <b>Payment support</b> from ${tag(user, user.telegram_id)}\n\n${body.slice(0, 1500)}`);
+  }
+  for (const id of await botAdminIds()) {
+    await sendMessage(id, `💰 <b>Payment support</b> from ${tag(user, user.telegram_id)}\n\n${body.slice(0, 1500)}`);
+  }
+  await sendMessage(user.telegram_id, PAYSUPPORT_SENT, [
+    [{ text: "🔍 Find a partner", callback_data: "search" }],
+  ]);
+}
+
+/** Admin Telegram IDs that should receive live notifications. */
+async function botAdminIds(): Promise<number[]> {
+  const { ADMIN_TELEGRAM_ID } = await import("./gate.server");
+  const extra = (await getSetting("admin_ids")) ?? "";
+  const ids = extra
+    .split(/[,\s]+/)
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return Array.from(new Set([ADMIN_TELEGRAM_ID, ...ids]));
+}
+
 /* ------------------------------------------------------------------ dialogs */
 
 function ratingKeyboard(dialogId: string, partnerId: number): InlineKeyboard {
