@@ -363,6 +363,7 @@ async function endDialog(user: BotUser, opts: { notifyPartner: boolean; reason?:
 
 /** Free users may talk to a limited number of distinct partners per rolling 24 hours. */
 async function partnerLimitBlock(user: BotUser, config: Record<string, string>): Promise<string | null> {
+  if (!bool(config, "paid_model_enabled")) return null;
   if (isVip(user)) return null;
   const limit = num(config, "free_daily_partner_limit");
   const supabase = await db();
@@ -424,6 +425,12 @@ async function startSearch(user: BotUser) {
   const last = user.last_search_at ? new Date(user.last_search_at).getTime() : 0;
   if (cooldown > 0 && Date.now() - last < cooldown) {
     await sendMessage(user.telegram_id, "⏱ Easy — wait a couple of seconds before searching again.");
+    return;
+  }
+
+  const join = await forceJoinBlock(user.telegram_id);
+  if (join) {
+    await sendMessage(user.telegram_id, join.text, join.keyboard);
     return;
   }
 
@@ -1158,8 +1165,19 @@ async function handleCallback(callback: TgCallback) {
     return;
   }
 
+  if (data.startsWith("a:")) {
+    await handleAdminCallback(user.telegram_id, data, callback.message?.message_id);
+    return;
+  }
+
   if (data === "vip") {
     await sendVipOffer(user);
+    return;
+  }
+
+  const plan = /^vip:(week|month|year)$/.exec(data);
+  if (plan) {
+    await sendVipInvoice(user, plan[1]!);
     return;
   }
 
