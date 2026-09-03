@@ -680,18 +680,44 @@ async function handleRating(rater: BotUser, ratedId: number, dialogId: string, v
 
 async function sendVipOffer(user: BotUser) {
   const config = await settings();
-  const stars = num(config, "vip_price_stars");
-  const days = num(config, "vip_days");
   const limit = num(config, "free_daily_partner_limit");
   const until = isVip(user) ? new Date(user.vip_expires_at!).toUTCString() : null;
 
-  await sendMessage(user.telegram_id, vipText(stars, days, limit, until));
+  if (!bool(config, "paid_model_enabled")) {
+    await sendMessage(
+      user.telegram_id,
+      "🎉 <b>Everything is free right now</b>\n\nUnlimited partners for everyone — VIP plans are not on sale yet.\n\n📣 Follow @MistChatChannel to hear when VIP launches.",
+    );
+    return;
+  }
+
+  const plans = vipPlans(config);
+  await sendMessage(
+    user.telegram_id,
+    vipText(plans, limit, until),
+    plans.map((p) => [
+      { text: `${p.stars} ⭐ · ${p.label}`, callback_data: `vip:${p.code}` },
+    ]),
+  );
+}
+
+async function sendVipInvoice(user: BotUser, code: string) {
+  const config = await settings();
+  if (!bool(config, "paid_model_enabled")) {
+    await sendVipOffer(user);
+    return;
+  }
+  const plan = vipPlans(config).find((p) => p.code === code);
+  if (!plan) {
+    await sendVipOffer(user);
+    return;
+  }
   await sendStarsInvoice({
     chatId: user.telegram_id,
-    title: `Mist VIP — ${days} days`,
+    title: `Mist VIP — ${plan.days} days`,
     description: "Unlimited partners, matching filters, priority queue and a VIP badge.",
-    payload: `vip_${days}d:${user.telegram_id}:${Date.now()}`,
-    stars,
+    payload: `vip:${plan.code}:${plan.days}:${user.telegram_id}:${Date.now()}`,
+    stars: plan.stars,
   });
 }
 
