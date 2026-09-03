@@ -431,7 +431,7 @@ async function flagForReview(userId: number, reason: string) {
   if (admin) {
     await sendMessage(
       admin,
-      `⚠️ <b>Flagged for review</b>\n${tag(target, userId)}\nReason: ${reason}\n\nReview it in the dashboard: ${DASHBOARD_URL}/admin`,
+      `⚠️ <b>Flagged for review</b>\n${tag(target, userId)}\nReason: ${reason}\n\nOpen /admin → 👤 Users to decide.`,
     );
   }
 }
@@ -543,7 +543,7 @@ async function openReport(reporter: BotUser, reportedId: number, dialogId: strin
       )}\n\n<b>Partner 1 (reporter)</b>: ${tag(reporter, reporter.telegram_id)}\n<b>Partner 2 (reported)</b>: ${tag(
         reported,
         reportedId,
-      )}\n\nDistinct reports against Partner 2: <b>${distinct}</b>\n\nDecide in the dashboard: ${DASHBOARD_URL}/admin`,
+      )}\n\nDistinct reports against Partner 2: <b>${distinct}</b>\n\nOpen /admin → 🚩 Reports to decide.`,
     );
   }
 
