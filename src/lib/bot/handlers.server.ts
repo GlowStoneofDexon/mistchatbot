@@ -724,7 +724,9 @@ async function sendVipInvoice(user: BotUser, code: string) {
 async function activateVip(user: BotUser, payment: TgSuccessfulPayment) {
   const supabase = await db();
   const config = await settings();
-  const days = num(config, "vip_days");
+  const parts = payment.invoice_payload.split(":");
+  const fromPayload = Number(parts[0] === "vip" ? parts[2] : NaN);
+  const days = Number.isFinite(fromPayload) && fromPayload > 0 ? fromPayload : num(config, "vip_days");
   const base = isVip(user) ? new Date(user.vip_expires_at!).getTime() : Date.now();
   const expires = new Date(base + days * 86_400_000).toISOString();
 
