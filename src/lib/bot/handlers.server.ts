@@ -831,6 +831,29 @@ async function handleMessage(message: TgMessage) {
     return;
   }
 
+  // Admin panel prompts (ban target, broadcast copy, plan prices, …).
+  if (await isBotAdmin(user.telegram_id)) {
+    const adminSession = await getAdminSession(user.telegram_id);
+    if (adminSession) {
+      await handleAdminInput(user.telegram_id, text || message.caption || "", message);
+      return;
+    }
+  }
+
+  // Payment support: the next message the user sends becomes the ticket.
+  if (await getSupportSession(user.telegram_id)) {
+    if (text === "/cancel") {
+      await setSupportSession(user.telegram_id, false);
+      await sendMessage(user.telegram_id, "Cancelled.");
+      return;
+    }
+    if (!text.startsWith("/")) {
+      await fileSupportTicket(user, text || message.caption || "(media)");
+      return;
+    }
+    await setSupportSession(user.telegram_id, false);
+  }
+
   const evidence = await getEvidenceSession(user.telegram_id);
   if (evidence) {
     if (text === "/done" || text === "/skip") {
