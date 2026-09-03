@@ -33,7 +33,7 @@ import {
   removeTester,
 } from "./gate.server";
 import { consume, FLOOD_MESSAGE } from "./limits.server";
-import { settings, num, bool, vipPlans } from "./settings.server";
+import { settings, num, bool, vipPlans, content } from "./settings.server";
 import {
   adminMenu,
   handleAdminCallback,
@@ -701,7 +701,10 @@ async function sendVipOffer(user: BotUser) {
   const plans = vipPlans(config);
   await sendMessage(
     user.telegram_id,
-    vipText(plans, limit, until),
+    `${vipText(plans, limit, until)}${(() => {
+      const extra = content(config, "vip", "");
+      return extra ? `\n\n${extra}` : "";
+    })()}`,
     plans.map((p) => [
       { text: `${p.stars} ⭐ · ${p.label}`, callback_data: `vip:${p.code}` },
     ]),
@@ -949,20 +952,20 @@ async function handleMessage(message: TgMessage) {
     const command = text.split(/[\s@]/)[0];
     switch (command) {
       case "/start": {
-        await sendMessage(user.telegram_id, WELCOME);
+        await sendMessage(user.telegram_id, content(await settings(), "welcome", WELCOME));
         if (await onboardingGate(user)) return;
         const gate = await chatBlocked(user.telegram_id);
         if (gate) await sendMessage(user.telegram_id, gate);
         return;
       }
       case "/help":
-        await sendMessage(user.telegram_id, HELP);
+        await sendMessage(user.telegram_id, content(await settings(), "help", HELP));
         return;
       case "/rules":
-        await sendMessage(user.telegram_id, RULES);
+        await sendMessage(user.telegram_id, content(await settings(), "rules", RULES));
         return;
       case "/terms":
-        await sendMessage(user.telegram_id, TERMS);
+        await sendMessage(user.telegram_id, content(await settings(), "terms", TERMS));
         return;
       case "/vip":
         await sendVipOffer(user);
@@ -977,7 +980,7 @@ async function handleMessage(message: TgMessage) {
           return;
         }
         await setSupportSession(user.telegram_id, true);
-        await sendMessage(user.telegram_id, PAYSUPPORT);
+        await sendMessage(user.telegram_id, content(await settings(), "paysupport", PAYSUPPORT));
         return;
       }
       case "/myid":
