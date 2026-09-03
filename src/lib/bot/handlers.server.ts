@@ -964,20 +964,19 @@ async function handleMessage(message: TgMessage) {
         return;
       }
       case "/admin":
-      case "/auth": {
-        if (user.telegram_id !== ADMIN_TELEGRAM_ID) {
+      case "/panel": {
+        if (!(await isBotAdmin(user.telegram_id))) {
           await sendMessage(user.telegram_id, "Unknown command. See /help for the full list.");
           return;
         }
-        const code = await issueClaimCode();
-        await sendMessage(
-          user.telegram_id,
-          `🛡 <b>Moderation dashboard</b>\n\n1. Open ${DASHBOARD_URL}/auth?claim=${code}\n2. Sign in (or create your account) with your email\n3. The admin role is granted automatically\n\nThis one-time code expires in 30 minutes. Never share it.`,
-        );
+        await adminMenu(user.telegram_id);
         return;
       }
+      case "/cancel":
+        await sendMessage(user.telegram_id, "Nothing to cancel.");
+        return;
       case "/testers": {
-        if (user.telegram_id !== ADMIN_TELEGRAM_ID) {
+        if (!(await isBotAdmin(user.telegram_id))) {
           await sendMessage(user.telegram_id, "Unknown command. See /help for the full list.");
           return;
         }
