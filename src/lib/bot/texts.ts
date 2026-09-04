@@ -28,10 +28,30 @@ export const TERMS_GATE = `<b>📖 One last step</b>
 
 Please read the /terms and /rules, then accept them to start chatting.`;
 
+export const NAME_PROMPT = `<b>✍️ Choose your profile name</b>
+
+Send the name your partners will see (2–32 characters). Make it a nickname — do not use your real name or phone number.`;
+
+export const NAME_INVALID = `❌ That name does not work. Send 2–32 characters, no links or @usernames.`;
+
+export const GENDER_PROMPT = `<b>🧑 Your gender</b>
+
+This is used for matching only.`;
+
+export const SELF_AGE_PROMPT = `<b>🎂 Your age</b>
+
+Send your age as a number (18 or above).`;
+
+export const SELF_AGE_INVALID = `❌ Send a number between 18 and 99.`;
+
+export const LANGUAGE_PROMPT = `<b>🗣 Your language</b>
+
+Pick the language you want to chat in.`;
+
 export const ONBOARDING_DONE = `✅ <b>All set!</b>
 
 Tap /search whenever you want to meet someone new.
-💎 /vip — unlock unlimited partners and matching filters.`;
+💎 /vip — unlock unlimited partners, matching filters and saved partners.`;
 
 export const HELP = `<b>🆘 How to use ${BOT_NAME}</b>
 
