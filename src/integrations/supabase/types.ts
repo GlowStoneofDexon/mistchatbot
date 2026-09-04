@@ -71,8 +71,10 @@ export type Database = {
           dialog_id: string | null
           dialog_started_at: string | null
           dislikes: number
+          display_name: string | null
           first_name: string | null
           flagged_for_review: boolean
+          gender: string | null
           language_code: string | null
           last_link_at: string | null
           last_next_at: string | null
@@ -110,8 +112,10 @@ export type Database = {
           dialog_id?: string | null
           dialog_started_at?: string | null
           dislikes?: number
+          display_name?: string | null
           first_name?: string | null
           flagged_for_review?: boolean
+          gender?: string | null
           language_code?: string | null
           last_link_at?: string | null
           last_next_at?: string | null
@@ -149,8 +153,10 @@ export type Database = {
           dialog_id?: string | null
           dialog_started_at?: string | null
           dislikes?: number
+          display_name?: string | null
           first_name?: string | null
           flagged_for_review?: boolean
+          gender?: string | null
           language_code?: string | null
           last_link_at?: string | null
           last_next_at?: string | null
@@ -176,6 +182,36 @@ export type Database = {
           vip_expires_at?: string | null
           vip_started_at?: string | null
           warnings?: number
+        }
+        Relationships: []
+      }
+      chat_invites: {
+        Row: {
+          created_at: string
+          expires_at: string
+          from_id: number
+          id: string
+          responded_at: string | null
+          status: string
+          to_id: number
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          from_id: number
+          id?: string
+          responded_at?: string | null
+          status?: string
+          to_id: number
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          from_id?: number
+          id?: string
+          responded_at?: string | null
+          status?: string
+          to_id?: number
         }
         Relationships: []
       }
@@ -424,6 +460,33 @@ export type Database = {
           resolved_at?: string | null
           severity?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      saved_partners: {
+        Row: {
+          alias: string | null
+          created_at: string
+          dialog_id: string | null
+          id: string
+          owner_id: number
+          partner_id: number
+        }
+        Insert: {
+          alias?: string | null
+          created_at?: string
+          dialog_id?: string | null
+          id?: string
+          owner_id: number
+          partner_id: number
+        }
+        Update: {
+          alias?: string | null
+          created_at?: string
+          dialog_id?: string | null
+          id?: string
+          owner_id?: number
+          partner_id?: number
         }
         Relationships: []
       }
