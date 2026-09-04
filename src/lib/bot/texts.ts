@@ -62,6 +62,8 @@ export const HELP = `<b>🆘 How to use ${BOT_NAME}</b>
 🆘 /help — How to use the bot
 💎 /vip — Become a VIP
 🔗 /link — Send your Telegram profile URL to your partner
+🔁 /reinvite — Invite a saved partner back (VIP)
+👤 /profile — View or change your name, gender, age & language
 🆔 /myid — View your Telegram account ID
 💰 /paysupport — Payment support
 📋 /rules — Rules of the chat
@@ -69,7 +71,7 @@ export const HELP = `<b>🆘 How to use ${BOT_NAME}</b>
 
 You can send text, photos, videos, voice, GIFs, stickers and documents. Everything is copied to your partner anonymously.
 
-After each chat you can rate your partner 👍 / 👎 or 🚩 report them.`;
+After each chat you can rate your partner 👍 / 👎, 🚩 report them, or 💾 save them (VIP) so you can /reinvite them later.`;
 
 export const RULES = `<b>📋 Rules of the chat</b>
 
