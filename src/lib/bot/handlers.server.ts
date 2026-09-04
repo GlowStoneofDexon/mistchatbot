@@ -20,6 +20,12 @@ import {
   EVIDENCE_PROMPT,
   EVIDENCE_SAVED,
   EVIDENCE_CLOSED,
+  NAME_PROMPT,
+  NAME_INVALID,
+  GENDER_PROMPT,
+  SELF_AGE_PROMPT,
+  SELF_AGE_INVALID,
+  LANGUAGE_PROMPT,
   REPORT_REASONS,
   reasonLabel,
   vipText,
@@ -42,6 +48,7 @@ import {
   isBotAdmin,
   forceJoinBlock,
 } from "./admin.server";
+import { savePartner, listSaved, sendInvite, respondInvite, removeSaved } from "./social.server";
 
 type TgUser = {
   id: number;
@@ -116,6 +123,12 @@ type BotUser = {
   country_code: string | null;
   language_code: string | null;
   flagged_for_review: boolean;
+  display_name: string | null;
+  gender: string | null;
+  self_age: number | null;
+  pref_language: string | null;
+  last_seen: string;
+  vip_expires_at_dummy?: never;
 };
 
 async function db() {
@@ -213,6 +226,29 @@ const TERMS_KEYBOARD: InlineKeyboard = [
   [{ text: "✅ I accept the rules & terms", callback_data: "ob:terms:yes" }],
 ];
 
+const GENDER_KEYBOARD: InlineKeyboard = [
+  [
+    { text: "👨 Male", callback_data: "ob:g:male" },
+    { text: "👩 Female", callback_data: "ob:g:female" },
+  ],
+  [{ text: "🧑 Other / prefer not to say", callback_data: "ob:g:other" }],
+];
+
+const LANGUAGE_KEYBOARD: InlineKeyboard = [
+  [
+    { text: "🇬🇧 English", callback_data: "ob:l:en" },
+    { text: "🇧🇩 বাংলা", callback_data: "ob:l:bn" },
+  ],
+  [
+    { text: "🇮🇳 हिन्दी", callback_data: "ob:l:hi" },
+    { text: "🇸🇦 العربية", callback_data: "ob:l:ar" },
+  ],
+  [
+    { text: "🇪🇸 Español", callback_data: "ob:l:es" },
+    { text: "🌍 Other", callback_data: "ob:l:other" },
+  ],
+];
+
 /** Sends the next onboarding step. Returns true when the user still has to finish it. */
 async function onboardingGate(user: BotUser): Promise<boolean> {
   if (user.onboarding_status === "done") return false;
@@ -224,8 +260,75 @@ async function onboardingGate(user: BotUser): Promise<boolean> {
     await sendMessage(user.telegram_id, AGE_GATE, AGE_KEYBOARD);
     return true;
   }
-  await sendMessage(user.telegram_id, TERMS_GATE, TERMS_KEYBOARD);
+  if (!user.terms_accepted_at) {
+    await sendMessage(user.telegram_id, TERMS_GATE, TERMS_KEYBOARD);
+    return true;
+  }
+  if (!user.display_name) {
+    await update(user.telegram_id, { onboarding_status: "name" });
+    await sendMessage(user.telegram_id, NAME_PROMPT);
+    return true;
+  }
+  if (!user.gender) {
+    await update(user.telegram_id, { onboarding_status: "gender" });
+    await sendMessage(user.telegram_id, GENDER_PROMPT, GENDER_KEYBOARD);
+    return true;
+  }
+  if (!user.self_age) {
+    await update(user.telegram_id, { onboarding_status: "self_age" });
+    await sendMessage(user.telegram_id, SELF_AGE_PROMPT);
+    return true;
+  }
+  await update(user.telegram_id, { onboarding_status: "language" });
+  await sendMessage(user.telegram_id, LANGUAGE_PROMPT, LANGUAGE_KEYBOARD);
   return true;
+}
+
+/** Free-text answers for the naming and age steps. Returns true when consumed. */
+async function onboardingInput(user: BotUser, text: string): Promise<boolean> {
+  if (user.onboarding_status === "name") {
+    const name = text.replace(/\s+/g, " ").trim();
+    if (name.length < 2 || name.length > 32 || /https?:\/\/|@\w|t\.me/i.test(name)) {
+      await sendMessage(user.telegram_id, NAME_INVALID);
+      return true;
+    }
+    await update(user.telegram_id, { display_name: name, onboarding_status: "gender" });
+    await sendMessage(user.telegram_id, `👋 Nice to meet you, <b>${name}</b>!`);
+    const refreshed = await getUser(user.telegram_id);
+    if (refreshed) await onboardingGate(refreshed);
+    return true;
+  }
+  if (user.onboarding_status === "self_age") {
+    const age = Number(text.trim());
+    if (!Number.isFinite(age) || age < 18 || age > 99) {
+      await sendMessage(user.telegram_id, SELF_AGE_INVALID);
+      return true;
+    }
+    await update(user.telegram_id, { self_age: Math.trunc(age), onboarding_status: "language" });
+    const refreshed = await getUser(user.telegram_id);
+    if (refreshed) await onboardingGate(refreshed);
+    return true;
+  }
+  return false;
+}
+
+async function profileCard(user: BotUser) {
+  await sendMessage(
+    user.telegram_id,
+    `👤 <b>Your profile</b>\n\nName: <b>${user.display_name ?? "—"}</b>\nGender: <b>${
+      user.gender ?? "—"
+    }</b>\nAge: <b>${user.self_age ?? "—"}</b>\nLanguage: <b>${user.pref_language ?? "—"}</b>\n\nOnly your name is ever shown to a partner — and only when you re-invite them.`,
+    [
+      [
+        { text: "✍️ Name", callback_data: "pf:name" },
+        { text: "🧑 Gender", callback_data: "pf:gender" },
+      ],
+      [
+        { text: "🎂 Age", callback_data: "pf:age" },
+        { text: "🗣 Language", callback_data: "pf:lang" },
+      ],
+    ],
+  );
 }
 
 /* ------------------------------------------------------------------ evidence */
@@ -303,7 +406,10 @@ function ratingKeyboard(dialogId: string, partnerId: number): InlineKeyboard {
       { text: "👍 Like", callback_data: `r:l:${d}:${partnerId}` },
       { text: "👎 Dislike", callback_data: `r:d:${d}:${partnerId}` },
     ],
-    [{ text: "🚩 Report", callback_data: `rp:${d}:${partnerId}` }],
+    [
+      { text: "💾 Save partner", callback_data: `sv:${partnerId}:${d}` },
+      { text: "🚩 Report", callback_data: `rp:${d}:${partnerId}` },
+    ],
     [{ text: "🔍 Find a new partner", callback_data: "search" }],
   ];
 }
