@@ -28,10 +28,30 @@ export const TERMS_GATE = `<b>📖 One last step</b>
 
 Please read the /terms and /rules, then accept them to start chatting.`;
 
+export const NAME_PROMPT = `<b>✍️ Choose your profile name</b>
+
+Send the name your partners will see (2–32 characters). Make it a nickname — do not use your real name or phone number.`;
+
+export const NAME_INVALID = `❌ That name does not work. Send 2–32 characters, no links or @usernames.`;
+
+export const GENDER_PROMPT = `<b>🧑 Your gender</b>
+
+This is used for matching only.`;
+
+export const SELF_AGE_PROMPT = `<b>🎂 Your age</b>
+
+Send your age as a number (18 or above).`;
+
+export const SELF_AGE_INVALID = `❌ Send a number between 18 and 99.`;
+
+export const LANGUAGE_PROMPT = `<b>🗣 Your language</b>
+
+Pick the language you want to chat in.`;
+
 export const ONBOARDING_DONE = `✅ <b>All set!</b>
 
 Tap /search whenever you want to meet someone new.
-💎 /vip — unlock unlimited partners and matching filters.`;
+💎 /vip — unlock unlimited partners, matching filters and saved partners.`;
 
 export const HELP = `<b>🆘 How to use ${BOT_NAME}</b>
 
@@ -42,6 +62,8 @@ export const HELP = `<b>🆘 How to use ${BOT_NAME}</b>
 🆘 /help — How to use the bot
 💎 /vip — Become a VIP
 🔗 /link — Send your Telegram profile URL to your partner
+🔁 /reinvite — Invite a saved partner back (VIP)
+👤 /profile — View or change your name, gender, age & language
 🆔 /myid — View your Telegram account ID
 💰 /paysupport — Payment support
 📋 /rules — Rules of the chat
@@ -49,7 +71,7 @@ export const HELP = `<b>🆘 How to use ${BOT_NAME}</b>
 
 You can send text, photos, videos, voice, GIFs, stickers and documents. Everything is copied to your partner anonymously.
 
-After each chat you can rate your partner 👍 / 👎 or 🚩 report them.`;
+After each chat you can rate your partner 👍 / 👎, 🚩 report them, or 💾 save them (VIP) so you can /reinvite them later.`;
 
 export const RULES = `<b>📋 Rules of the chat</b>
 

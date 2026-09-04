@@ -28,6 +28,11 @@ export const DEFAULTS: Record<string, string> = {
   enable_video: "true",
   terms_version: "1",
   rules_version: "1",
+  saved_partners_enabled: "true",
+  vip_saved_partner_limit: "25",
+  invite_cooldown_seconds: "30",
+  online_window_minutes: "5",
+  ton_payout_address: "UQDWb1NXG-Ac1g5KMHkXFe_8n1tDV70M7B40K7dkv7Cyk4LZ",
 };
 
 export async function settings(): Promise<Record<string, string>> {
