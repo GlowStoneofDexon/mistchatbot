@@ -1307,6 +1307,82 @@ async function handleCallback(callback: TgCallback) {
     return;
   }
 
+  const genderPick = /^ob:g:(male|female|other)$/.exec(data);
+  if (genderPick) {
+    const editing = user.onboarding_status === "edit_gender";
+    await update(user.telegram_id, {
+      gender: genderPick[1]!,
+      onboarding_status: editing ? "done" : "self_age",
+    });
+    const refreshed = await getUser(user.telegram_id);
+    if (!refreshed) return;
+    if (editing) await profileCard(refreshed);
+    else await onboardingGate(refreshed);
+    return;
+  }
+
+  const langPick = /^ob:l:([a-z]+)$/.exec(data);
+  if (langPick) {
+    const editing = user.onboarding_status === "edit_lang";
+    await update(user.telegram_id, {
+      pref_language: langPick[1] === "other" ? null : langPick[1]!,
+      onboarding_status: "done",
+      account_status: "active",
+    });
+    const refreshed = await getUser(user.telegram_id);
+    if (!refreshed) return;
+    if (editing) {
+      await profileCard(refreshed);
+      return;
+    }
+    await sendMessage(user.telegram_id, ONBOARDING_DONE);
+    const gate = await chatBlocked(user.telegram_id);
+    if (gate) await sendMessage(user.telegram_id, gate);
+    return;
+  }
+
+  if (data === "pf:name") {
+    await update(user.telegram_id, { onboarding_status: "edit_name" });
+    await sendMessage(user.telegram_id, NAME_PROMPT);
+    return;
+  }
+  if (data === "pf:age") {
+    await update(user.telegram_id, { onboarding_status: "edit_age" });
+    await sendMessage(user.telegram_id, SELF_AGE_PROMPT);
+    return;
+  }
+  if (data === "pf:gender") {
+    await update(user.telegram_id, { onboarding_status: "edit_gender" });
+    await sendMessage(user.telegram_id, GENDER_PROMPT, GENDER_KEYBOARD);
+    return;
+  }
+  if (data === "pf:lang") {
+    await update(user.telegram_id, { onboarding_status: "edit_lang" });
+    await sendMessage(user.telegram_id, LANGUAGE_PROMPT, LANGUAGE_KEYBOARD);
+    return;
+  }
+
+  const save = /^sv:(\d+)(?::([0-9a-f]{32}))?$/.exec(data);
+  if (save) {
+    await savePartner(user as never, Number(save[1]), save[2] ? expand(save[2]) : null);
+    return;
+  }
+  const unsave = /^svx:(\d+)$/.exec(data);
+  if (unsave) {
+    await removeSaved(user as never, Number(unsave[1]));
+    return;
+  }
+  const invite = /^inv:(\d+)$/.exec(data);
+  if (invite) {
+    await sendInvite(user as never, Number(invite[1]));
+    return;
+  }
+  const inviteReply = /^iv(a|d):([0-9a-f]{32})$/.exec(data);
+  if (inviteReply) {
+    await respondInvite(user as never, inviteReply[2]!, inviteReply[1] === "a");
+    return;
+  }
+
   if (data.startsWith("a:")) {
     await handleAdminCallback(user.telegram_id, data, callback.message?.message_id);
     return;
