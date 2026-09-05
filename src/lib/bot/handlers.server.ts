@@ -286,6 +286,28 @@ async function onboardingGate(user: BotUser): Promise<boolean> {
 
 /** Free-text answers for the naming and age steps. Returns true when consumed. */
 async function onboardingInput(user: BotUser, text: string): Promise<boolean> {
+  if (user.onboarding_status === "edit_name") {
+    const name = text.replace(/\s+/g, " ").trim();
+    if (name.length < 2 || name.length > 32 || /https?:\/\/|@\w|t\.me/i.test(name)) {
+      await sendMessage(user.telegram_id, NAME_INVALID);
+      return true;
+    }
+    await update(user.telegram_id, { display_name: name, onboarding_status: "done" });
+    const refreshed = await getUser(user.telegram_id);
+    if (refreshed) await profileCard(refreshed);
+    return true;
+  }
+  if (user.onboarding_status === "edit_age") {
+    const age = Number(text.trim());
+    if (!Number.isFinite(age) || age < 18 || age > 99) {
+      await sendMessage(user.telegram_id, SELF_AGE_INVALID);
+      return true;
+    }
+    await update(user.telegram_id, { self_age: Math.trunc(age), onboarding_status: "done" });
+    const refreshed = await getUser(user.telegram_id);
+    if (refreshed) await profileCard(refreshed);
+    return true;
+  }
   if (user.onboarding_status === "name") {
     const name = text.replace(/\s+/g, " ").trim();
     if (name.length < 2 || name.length > 32 || /https?:\/\/|@\w|t\.me/i.test(name)) {
