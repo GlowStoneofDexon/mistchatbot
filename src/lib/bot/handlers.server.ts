@@ -1076,6 +1076,8 @@ async function handleMessage(message: TgMessage) {
     return;
   }
 
+  if (!text.startsWith("/") && text && (await onboardingInput(user, text))) return;
+
   if (text.startsWith("/")) {
     const command = text.split(/[\s@]/)[0];
     switch (command) {
