@@ -1200,6 +1200,15 @@ async function handleMessage(message: TgMessage) {
         await adminMenu(user.telegram_id);
         return;
       }
+      case "/profile":
+        if (await onboardingGate(user)) return;
+        await profileCard(user);
+        return;
+      case "/reinvite":
+      case "/saved":
+        if (await onboardingGate(user)) return;
+        await listSaved(user as never);
+        return;
       case "/cancel":
         await sendMessage(user.telegram_id, "Nothing to cancel.");
         return;
