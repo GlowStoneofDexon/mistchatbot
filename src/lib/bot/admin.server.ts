@@ -256,6 +256,31 @@ async function systemMenu(chatId: number) {
   );
 }
 
+async function limitsMenu(chatId: number) {
+  const config = await settings();
+  await sendMessage(
+    chatId,
+    `🤝 <b>Limits & invites</b>\n\nFree partners / 24h: <b>${num(config, "free_daily_partner_limit")}</b>\nSaved partners (VIP): <b>${num(
+      config,
+      "vip_saved_partner_limit",
+    )}</b>\nSave & re-invite: <b>${bool(config, "saved_partners_enabled") ? "🟢 on" : "🔴 off"}</b>\nInvite cooldown: <b>${num(
+      config,
+      "invite_cooldown_seconds",
+    )}s</b>\nOnline window: <b>${num(config, "online_window_minutes")} min</b>\nTON payout: <code>${
+      config["ton_payout_address"] ?? "—"
+    }</code>`,
+    [
+      [{ text: "🔢 Free partner limit", callback_data: "a:plans:limit" }],
+      [{ text: "💾 Saved partner limit", callback_data: "a:lim:saved" }],
+      [{ text: "⏱ Invite cooldown", callback_data: "a:lim:invcd" }],
+      [{ text: "🟢 Online window", callback_data: "a:lim:online" }],
+      [{ text: "🔁 Toggle save & re-invite", callback_data: "a:sys:saved_partners_enabled" }],
+      [{ text: "💰 TON payout address", callback_data: "a:lim:ton" }],
+      ...back,
+    ],
+  );
+}
+
 async function analytics(chatId: number) {
   const supabase = await db();
   const { data } = await supabase.rpc("bot_admin_stats");
