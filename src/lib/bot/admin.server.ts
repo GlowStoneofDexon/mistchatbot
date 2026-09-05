@@ -121,7 +121,10 @@ Choose a section:`;
       { text: "📝 Content", callback_data: "a:content" },
       { text: "⚙️ System", callback_data: "a:system" },
     ],
-    [{ text: "🎫 Support tickets", callback_data: "a:tickets" }],
+    [
+      { text: "🤝 Limits & invites", callback_data: "a:limits" },
+      { text: "🎫 Support tickets", callback_data: "a:tickets" },
+    ],
   ];
 
   if (messageId) await editMessageText(chatId, messageId, text, keyboard);
