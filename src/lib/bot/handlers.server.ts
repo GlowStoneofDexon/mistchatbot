@@ -286,6 +286,28 @@ async function onboardingGate(user: BotUser): Promise<boolean> {
 
 /** Free-text answers for the naming and age steps. Returns true when consumed. */
 async function onboardingInput(user: BotUser, text: string): Promise<boolean> {
+  if (user.onboarding_status === "edit_name") {
+    const name = text.replace(/\s+/g, " ").trim();
+    if (name.length < 2 || name.length > 32 || /https?:\/\/|@\w|t\.me/i.test(name)) {
+      await sendMessage(user.telegram_id, NAME_INVALID);
+      return true;
+    }
+    await update(user.telegram_id, { display_name: name, onboarding_status: "done" });
+    const refreshed = await getUser(user.telegram_id);
+    if (refreshed) await profileCard(refreshed);
+    return true;
+  }
+  if (user.onboarding_status === "edit_age") {
+    const age = Number(text.trim());
+    if (!Number.isFinite(age) || age < 18 || age > 99) {
+      await sendMessage(user.telegram_id, SELF_AGE_INVALID);
+      return true;
+    }
+    await update(user.telegram_id, { self_age: Math.trunc(age), onboarding_status: "done" });
+    const refreshed = await getUser(user.telegram_id);
+    if (refreshed) await profileCard(refreshed);
+    return true;
+  }
   if (user.onboarding_status === "name") {
     const name = text.replace(/\s+/g, " ").trim();
     if (name.length < 2 || name.length > 32 || /https?:\/\/|@\w|t\.me/i.test(name)) {
@@ -1054,6 +1076,8 @@ async function handleMessage(message: TgMessage) {
     return;
   }
 
+  if (!text.startsWith("/") && text && (await onboardingInput(user, text))) return;
+
   if (text.startsWith("/")) {
     const command = text.split(/[\s@]/)[0];
     switch (command) {
@@ -1176,6 +1200,15 @@ async function handleMessage(message: TgMessage) {
         await adminMenu(user.telegram_id);
         return;
       }
+      case "/profile":
+        if (await onboardingGate(user)) return;
+        await profileCard(user);
+        return;
+      case "/reinvite":
+      case "/saved":
+        if (await onboardingGate(user)) return;
+        await listSaved(user as never);
+        return;
       case "/cancel":
         await sendMessage(user.telegram_id, "Nothing to cancel.");
         return;
@@ -1271,6 +1304,82 @@ async function handleCallback(callback: TgCallback) {
     await sendMessage(user.telegram_id, ONBOARDING_DONE);
     const gate = await chatBlocked(user.telegram_id);
     if (gate) await sendMessage(user.telegram_id, gate);
+    return;
+  }
+
+  const genderPick = /^ob:g:(male|female|other)$/.exec(data);
+  if (genderPick) {
+    const editing = user.onboarding_status === "edit_gender";
+    await update(user.telegram_id, {
+      gender: genderPick[1]!,
+      onboarding_status: editing ? "done" : "self_age",
+    });
+    const refreshed = await getUser(user.telegram_id);
+    if (!refreshed) return;
+    if (editing) await profileCard(refreshed);
+    else await onboardingGate(refreshed);
+    return;
+  }
+
+  const langPick = /^ob:l:([a-z]+)$/.exec(data);
+  if (langPick) {
+    const editing = user.onboarding_status === "edit_lang";
+    await update(user.telegram_id, {
+      pref_language: langPick[1] === "other" ? null : langPick[1]!,
+      onboarding_status: "done",
+      account_status: "active",
+    });
+    const refreshed = await getUser(user.telegram_id);
+    if (!refreshed) return;
+    if (editing) {
+      await profileCard(refreshed);
+      return;
+    }
+    await sendMessage(user.telegram_id, ONBOARDING_DONE);
+    const gate = await chatBlocked(user.telegram_id);
+    if (gate) await sendMessage(user.telegram_id, gate);
+    return;
+  }
+
+  if (data === "pf:name") {
+    await update(user.telegram_id, { onboarding_status: "edit_name" });
+    await sendMessage(user.telegram_id, NAME_PROMPT);
+    return;
+  }
+  if (data === "pf:age") {
+    await update(user.telegram_id, { onboarding_status: "edit_age" });
+    await sendMessage(user.telegram_id, SELF_AGE_PROMPT);
+    return;
+  }
+  if (data === "pf:gender") {
+    await update(user.telegram_id, { onboarding_status: "edit_gender" });
+    await sendMessage(user.telegram_id, GENDER_PROMPT, GENDER_KEYBOARD);
+    return;
+  }
+  if (data === "pf:lang") {
+    await update(user.telegram_id, { onboarding_status: "edit_lang" });
+    await sendMessage(user.telegram_id, LANGUAGE_PROMPT, LANGUAGE_KEYBOARD);
+    return;
+  }
+
+  const save = /^sv:(\d+)(?::([0-9a-f]{32}))?$/.exec(data);
+  if (save) {
+    await savePartner(user as never, Number(save[1]), save[2] ? expand(save[2]) : null);
+    return;
+  }
+  const unsave = /^svx:(\d+)$/.exec(data);
+  if (unsave) {
+    await removeSaved(user as never, Number(unsave[1]));
+    return;
+  }
+  const invite = /^inv:(\d+)$/.exec(data);
+  if (invite) {
+    await sendInvite(user as never, Number(invite[1]));
+    return;
+  }
+  const inviteReply = /^iv(a|d):([0-9a-f]{32})$/.exec(data);
+  if (inviteReply) {
+    await respondInvite(user as never, inviteReply[2]!, inviteReply[1] === "a");
     return;
   }
 

@@ -121,7 +121,10 @@ Choose a section:`;
       { text: "📝 Content", callback_data: "a:content" },
       { text: "⚙️ System", callback_data: "a:system" },
     ],
-    [{ text: "🎫 Support tickets", callback_data: "a:tickets" }],
+    [
+      { text: "🤝 Limits & invites", callback_data: "a:limits" },
+      { text: "🎫 Support tickets", callback_data: "a:tickets" },
+    ],
   ];
 
   if (messageId) await editMessageText(chatId, messageId, text, keyboard);
@@ -248,6 +251,31 @@ async function systemMenu(chatId: number) {
       ],
       [{ text: "⏱ Search cooldown", callback_data: "a:sys:cd_search" }],
       [{ text: "⏱ Next cooldown", callback_data: "a:sys:cd_next" }],
+      ...back,
+    ],
+  );
+}
+
+async function limitsMenu(chatId: number) {
+  const config = await settings();
+  await sendMessage(
+    chatId,
+    `🤝 <b>Limits & invites</b>\n\nFree partners / 24h: <b>${num(config, "free_daily_partner_limit")}</b>\nSaved partners (VIP): <b>${num(
+      config,
+      "vip_saved_partner_limit",
+    )}</b>\nSave & re-invite: <b>${bool(config, "saved_partners_enabled") ? "🟢 on" : "🔴 off"}</b>\nInvite cooldown: <b>${num(
+      config,
+      "invite_cooldown_seconds",
+    )}s</b>\nOnline window: <b>${num(config, "online_window_minutes")} min</b>\nTON payout: <code>${
+      config["ton_payout_address"] ?? "—"
+    }</code>`,
+    [
+      [{ text: "🔢 Free partner limit", callback_data: "a:plans:limit" }],
+      [{ text: "💾 Saved partner limit", callback_data: "a:lim:saved" }],
+      [{ text: "⏱ Invite cooldown", callback_data: "a:lim:invcd" }],
+      [{ text: "🟢 Online window", callback_data: "a:lim:online" }],
+      [{ text: "🔁 Toggle save & re-invite", callback_data: "a:sys:saved_partners_enabled" }],
+      [{ text: "💰 TON payout address", callback_data: "a:lim:ton" }],
       ...back,
     ],
   );
@@ -555,6 +583,21 @@ export async function handleAdminCallback(chatId: number, data: string, messageI
     case "a:tickets":
       await ticketsList(chatId);
       return true;
+    case "a:limits":
+      await limitsMenu(chatId);
+      return true;
+    case "a:lim:saved":
+      await ask(chatId, "lim_saved", "💾 Send the maximum number of saved partners a VIP can keep.");
+      return true;
+    case "a:lim:invcd":
+      await ask(chatId, "lim_invcd", "⏱ Send the invitation cooldown in seconds.");
+      return true;
+    case "a:lim:online":
+      await ask(chatId, "lim_online", "🟢 Send the online window in minutes.");
+      return true;
+    case "a:lim:ton":
+      await ask(chatId, "lim_ton", "💰 Send the TON payout address to store.");
+      return true;
     case "a:sys:cd_search":
       await ask(chatId, "cd_search", "⏱ Send the search cooldown in seconds.");
       return true;
@@ -563,12 +606,13 @@ export async function handleAdminCallback(chatId: number, data: string, messageI
       return true;
   }
 
-  const flag = /^a:sys:(maintenance_mode|matching_paused|enable_media|enable_video)$/.exec(data);
+  const flag = /^a:sys:(maintenance_mode|matching_paused|enable_media|enable_video|saved_partners_enabled)$/.exec(data);
   if (flag) {
     const config = await settings();
     const next = bool(config, flag[1]!) ? "false" : "true";
     await saveSetting(flag[1]!, next);
-    await systemMenu(chatId);
+    if (flag[1] === "saved_partners_enabled") await limitsMenu(chatId);
+    else await systemMenu(chatId);
     return true;
   }
 
@@ -807,6 +851,28 @@ export async function handleAdminInput(chatId: number, raw: string, message?: { 
       const list = raw.split(/[,\s]+/).filter((c) => c && c.toLowerCase() !== target.toLowerCase());
       await saveSetting("force_join_channels", list.join(","));
       await sendMessage(chatId, `🗑 Removed ${target}.`, back);
+      return true;
+    }
+    case "lim_saved":
+    case "lim_invcd":
+    case "lim_online": {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < 0) {
+        await sendMessage(chatId, "❌ Send a number.", back);
+        return true;
+      }
+      const keys: Record<string, string> = {
+        lim_saved: "vip_saved_partner_limit",
+        lim_invcd: "invite_cooldown_seconds",
+        lim_online: "online_window_minutes",
+      };
+      await saveSetting(keys[session.action]!, String(Math.trunc(n)));
+      await sendMessage(chatId, `✅ Updated to <b>${Math.trunc(n)}</b>.`, back);
+      return true;
+    }
+    case "lim_ton": {
+      await saveSetting("ton_payout_address", value.trim());
+      await sendMessage(chatId, "💰 TON payout address saved.", back);
       return true;
     }
     case "cd_search":
