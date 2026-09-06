@@ -46,8 +46,10 @@ export async function isOnline(user: SocialUser, config?: Record<string, string>
   return Date.now() - new Date(user.last_seen).getTime() <= window;
 }
 
-const VIP_ONLY =
-  "💎 <b>VIP feature</b>\n\nSaving partners and re-inviting them later is available to VIP members.\n\nSee /vip to unlock it.";
+/** How many partners this user may keep saved. */
+export function savedLimit(user: SocialUser, config: Record<string, string>) {
+  return isVipUser(user) ? num(config, "vip_saved_partner_limit") : num(config, "free_saved_partner_limit");
+}
 
 /* ------------------------------------------------------------------ saving */
 
@@ -57,13 +59,8 @@ export async function savePartner(user: SocialUser, partnerId: number, dialogId:
     await sendMessage(user.telegram_id, "💾 Saving partners is currently switched off.");
     return;
   }
-  if (!isVipUser(user)) {
-    await sendMessage(user.telegram_id, VIP_ONLY, [[{ text: "💎 Get VIP", callback_data: "vip" }]]);
-    return;
-  }
-
   const supabase = await db();
-  const limit = num(config, "vip_saved_partner_limit");
+  const limit = savedLimit(user, config);
   const { count } = await supabase
     .from("saved_partners")
     .select("id", { count: "exact", head: true })
@@ -71,7 +68,10 @@ export async function savePartner(user: SocialUser, partnerId: number, dialogId:
   if ((count ?? 0) >= limit) {
     await sendMessage(
       user.telegram_id,
-      `💾 Your saved list is full (<b>${limit}</b>). Remove someone with /reinvite first.`,
+      isVipUser(user)
+        ? `💾 Your saved list is full (<b>${limit}</b>). Remove someone with /savedpartners first.`
+        : `💾 <b>Saved list full</b>\n\nFree members can keep <b>${limit}</b> partners. Remove one with /savedpartners, or get 💎 /vip for ${num(config, "vip_saved_partner_limit")} slots.`,
+      isVipUser(user) ? undefined : [[{ text: "💎 Get VIP", callback_data: "vip" }]],
     );
     return;
   }
@@ -110,11 +110,6 @@ export async function listSaved(user: SocialUser) {
     await sendMessage(user.telegram_id, "💾 Saving partners is currently switched off.");
     return;
   }
-  if (!isVipUser(user)) {
-    await sendMessage(user.telegram_id, VIP_ONLY, [[{ text: "💎 Get VIP", callback_data: "vip" }]]);
-    return;
-  }
-
   const supabase = await db();
   const { data } = await supabase
     .from("saved_partners")
@@ -132,11 +127,20 @@ export async function listSaved(user: SocialUser) {
     return;
   }
 
+  const { data: partnerRows } = await supabase
+    .from("bot_users")
+    .select("telegram_id, display_name, first_name, last_seen")
+    .in("telegram_id", rows.map((r) => r.partner_id));
+  const byId = new Map<number, SocialUser>(
+    ((partnerRows ?? []) as SocialUser[]).map((p) => [p.telegram_id, p]),
+  );
+  const onlineWindow = num(config, "online_window_minutes") * 60_000;
+
   const keyboard: InlineKeyboard = [];
   const lines: string[] = [];
   for (const row of rows) {
-    const partner = await getUser(row.partner_id);
-    const online = partner && (await isOnline(partner, config));
+    const partner = byId.get(row.partner_id) ?? null;
+    const online = partner != null && Date.now() - new Date(partner.last_seen).getTime() <= onlineWindow;
     lines.push(`• ${row.alias ?? nameOf(partner)} — ${online ? "🟢 online" : "⚪️ offline"}`);
     keyboard.push([
       { text: `🔁 Invite ${row.alias ?? nameOf(partner)}`, callback_data: `inv:${row.partner_id}` },
@@ -146,7 +150,7 @@ export async function listSaved(user: SocialUser) {
 
   await sendMessage(
     user.telegram_id,
-    `🔁 <b>Re-invite a saved partner</b>\n\n${lines.join("\n")}\n\nThey get an invitation and you are connected as soon as they accept — both of you must be free and online.`,
+    `🔁 <b>Saved partners</b> (${rows.length}/${savedLimit(user, config)})\n\n${lines.join("\n")}\n\nThey get an invitation and you are connected as soon as they accept — both of you must be free and online.`,
     keyboard,
   );
 }
@@ -155,10 +159,6 @@ export async function sendInvite(user: SocialUser, partnerId: number) {
   const config = await settings();
   if (!bool(config, "saved_partners_enabled")) {
     await sendMessage(user.telegram_id, "💾 The re-invite system is currently switched off.");
-    return;
-  }
-  if (!isVipUser(user)) {
-    await sendMessage(user.telegram_id, VIP_ONLY, [[{ text: "💎 Get VIP", callback_data: "vip" }]]);
     return;
   }
   if (user.state === "chatting") {
