@@ -29,19 +29,30 @@ export const DEFAULTS: Record<string, string> = {
   terms_version: "1",
   rules_version: "1",
   saved_partners_enabled: "true",
+  free_saved_partner_limit: "5",
   vip_saved_partner_limit: "25",
   invite_cooldown_seconds: "30",
   online_window_minutes: "5",
   ton_payout_address: "UQDWb1NXG-Ac1g5KMHkXFe_8n1tDV70M7B40K7dkv7Cyk4LZ",
 };
 
+let cache: { at: number; map: Record<string, string> } | null = null;
+const CACHE_MS = 10_000;
+
+/** Drops the in-memory settings cache (call right after writing a setting). */
+export function invalidateSettings() {
+  cache = null;
+}
+
 export async function settings(): Promise<Record<string, string>> {
+  if (cache && Date.now() - cache.at < CACHE_MS) return cache.map;
   const supabase = await db();
   const { data } = await supabase.from("bot_settings").select("key, value");
   const map: Record<string, string> = { ...DEFAULTS };
   for (const row of (data ?? []) as { key: string; value: string }[]) {
     if (row.value !== null && row.value !== undefined) map[row.key] = row.value;
   }
+  cache = { at: Date.now(), map };
   return map;
 }
 
