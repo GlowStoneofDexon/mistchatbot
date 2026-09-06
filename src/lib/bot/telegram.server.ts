@@ -119,3 +119,13 @@ export function editMessageText(
     ...(keyboard ? { reply_markup: { inline_keyboard: keyboard } } : {}),
   });
 }
+
+/** Removes a temporary bot message (confirmation prompts, pickers, …). */
+export function deleteMessage(chatId: number | string, messageId: number) {
+  return tg("deleteMessage", { chat_id: chatId, message_id: messageId });
+}
+
+/** Approves a pending join request to a private channel/group. */
+export function approveJoinRequest(chat: string | number, userId: number) {
+  return tg("approveChatJoinRequest", { chat_id: chat, user_id: userId });
+}
