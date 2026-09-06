@@ -215,6 +215,36 @@ export type Database = {
         }
         Relationships: []
       }
+      join_requests: {
+        Row: {
+          chat_id: number | null
+          chat_username: string | null
+          created_at: string
+          id: string
+          status: string
+          telegram_id: number
+          updated_at: string
+        }
+        Insert: {
+          chat_id?: number | null
+          chat_username?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          telegram_id: number
+          updated_at?: string
+        }
+        Update: {
+          chat_id?: number | null
+          chat_username?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          telegram_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       match_sessions: {
         Row: {
           end_reason: string | null
